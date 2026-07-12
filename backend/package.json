@@ -1,0 +1,21 @@
+{
+  "name": "gwburst-backend",
+  "version": "0.1.0",
+  "description": "Orchestrator and data pipeline manager for the Unmodeled Gravitational Wave Burst Detector",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

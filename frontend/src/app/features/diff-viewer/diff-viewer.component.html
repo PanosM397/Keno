@@ -1,0 +1,142 @@
+<div class="viewer">
+  <header class="topbar">
+    <div class="brand">
+      <h1>Keno</h1>
+      <p>Compare detector data, AI noise, and what remains.</p>
+    </div>
+
+    <div class="event-pills">
+      @for (event of knownEvents; track event.id) {
+        <button
+          class="pill"
+          [class.pill--active]="selectedEventId() === event.id"
+          (click)="selectEvent(event)"
+          [title]="event.title + ' — ' + event.subtitle"
+        >
+          {{ event.id }}
+        </button>
+      }
+    </div>
+
+    <button class="run-btn" (click)="fetch()" [disabled]="loading()">
+      @if (loading()) {
+        <span class="run-btn-label">Running…</span>
+        <span class="run-btn-elapsed mono">{{ formattedElapsed() }}</span>
+      } @else {
+        Run analysis
+      }
+    </button>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <details class="help">
+        <summary>How to read this page</summary>
+        <ol>
+          <li>Pick an event above.</li>
+          <li>Press <strong>Run analysis</strong>.</li>
+          <li>Hover any chart to inspect values. Scroll to zoom.</li>
+        </ol>
+      </details>
+
+      <details class="advanced">
+        <summary>Advanced settings</summary>
+        <div class="field">
+          <span class="field-label">Timestamp</span>
+          <input class="mono" type="number" step="0.1" [ngModel]="gpsTime()" (ngModelChange)="gpsTime.set($event)" />
+        </div>
+        <div class="field">
+          <span class="field-label">Observatory</span>
+          <select [ngModel]="detector()" (ngModelChange)="detector.set($event)">
+            <option value="H1">Hanford (H1)</option>
+            <option value="L1">Livingston (L1)</option>
+            <option value="V1">Virgo (V1)</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">Time window</span>
+          <select [ngModel]="duration()" (ngModelChange)="duration.set($event)">
+            <option [value]="4">4 seconds</option>
+            <option [value]="8">8 seconds</option>
+            <option [value]="16">16 seconds</option>
+          </select>
+        </div>
+      </details>
+
+      <div class="status" [class.status--error]="!!error()" [class.status--loading]="loading()">
+        @if (loading()) {
+          <div class="status-loading">
+            <div class="status-loading-header">
+              <span class="status-spinner" aria-hidden="true"></span>
+              <span class="status-message">{{ statusMessage() }}</span>
+              <span class="status-elapsed mono">{{ formattedElapsed() }}</span>
+            </div>
+            @if (statusHint()) {
+              <p class="status-hint">{{ statusHint() }}</p>
+            }
+            <div
+              class="progress-bar"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              [attr.aria-valuenow]="loadingProgress()"
+              [attr.aria-valuetext]="statusMessage()"
+            >
+              <div class="progress-bar-fill" [style.width.%]="loadingProgress()"></div>
+            </div>
+            <ul class="phase-steps" aria-label="Analysis progress">
+              @for (step of loadingSteps(); track step.id) {
+                <li
+                  class="phase-step"
+                  [class.phase-step--active]="step.active"
+                  [class.phase-step--done]="step.done"
+                >
+                  {{ step.label }}
+                </li>
+              }
+            </ul>
+          </div>
+        } @else {
+          {{ statusMessage() }}
+        }
+      </div>
+
+      @if (resultSummary()) {
+        <div class="meta">{{ resultSummary() }}</div>
+      }
+    </aside>
+
+    <main class="panels">
+      <app-chart-panel
+        [step]="1"
+        title="What the detector recorded"
+        description="Real observatory signal, prepared so the wiggles are easier to see."
+        accentColor="#e8e8e8"
+        group="gw-sync"
+        [points]="rawSeries()"
+        [loading]="loading()"
+        [loadingMessage]="loadingStatusMessage()"
+      />
+      <app-chart-panel
+        [step]="2"
+        title="What the AI calls noise"
+        description="What the model thinks is instrument/background noise and would subtract."
+        accentColor="#ff8a3d"
+        group="gw-sync"
+        [points]="noiseSeries()"
+        [loading]="loading()"
+        [loadingMessage]="loadingStatusMessage()"
+      />
+      <app-chart-panel
+        [step]="3"
+        title="What remains after subtraction"
+        description="The leftover signal — anything unusual here is worth a closer look."
+        accentColor="#2bffc2"
+        group="gw-sync"
+        [points]="residualSeries()"
+        [loading]="loading()"
+        [loadingMessage]="loadingStatusMessage()"
+      />
+    </main>
+  </div>
+</div>

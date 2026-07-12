@@ -1,0 +1,21 @@
+<section class="panel">
+  <header class="panel-header">
+    <div class="panel-copy">
+      <span class="step">Step {{ step }}</span>
+      <h3 class="panel-title" [style.color]="accentColor">{{ title }}</h3>
+      <p class="panel-description">{{ description }}</p>
+    </div>
+  </header>
+  <div class="panel-body">
+    <div #chartHost class="chart-host"></div>
+    @if (loading) {
+      <div class="overlay">
+        <span class="overlay-text">{{ loadingMessage }}</span>
+      </div>
+    } @else if (!points.length) {
+      <div class="overlay">
+        <span class="overlay-text">Run an analysis to see this chart</span>
+      </div>
+    }
+  </div>
+</section>
