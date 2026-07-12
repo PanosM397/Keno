@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ChartPanelComponent } from './chart-panel/chart-panel.component';
 import { StrainApiService } from '../../core/services/strain-api.service';
-import { Detector, DenoisedStrainResult, SeriesPoint } from '../../core/models/strain.models';
+import { Detector, DenoisedStrainResult, SeriesPoint, SyntheticStrategy } from '../../core/models/strain.models';
 
 interface LoadingPhase {
   afterSeconds: number;
@@ -37,6 +37,26 @@ const LOADING_PHASES: LoadingPhase[] = [
     message: 'Still working — large downloads take time…',
     hint: 'Repeat runs use the backend cache and usually finish in seconds.',
   },
+];
+
+const SYNTHETIC_LOADING_PHASES: LoadingPhase[] = [
+  {
+    afterSeconds: 0,
+    stepId: 'backend',
+    message: 'Generating synthetic strain…',
+    hint: 'Built locally from known noise plus an injected burst — no GWOSC download.',
+  },
+  {
+    afterSeconds: 1,
+    stepId: 'model',
+    message: 'Running validation subtraction…',
+    hint: 'Oracle mode uses the true noise mirror; model mode uses the live U-Net.',
+  },
+];
+
+const SYNTHETIC_LOADING_STEPS = [
+  { id: 'backend' as const, label: 'Synthetic strain generated' },
+  { id: 'model' as const, label: 'Noise subtraction applied' },
 ];
 
 const LOADING_STEPS = [
@@ -89,6 +109,48 @@ function toSeries(
   }));
 }
 
+interface SeriesStats {
+  mean: number;
+  std: number;
+  min: number;
+  max: number;
+}
+
+interface ResultDiagnostics {
+  timeStart: number;
+  timeEnd: number;
+  lengthsMatch: boolean;
+  subtractionVerified: boolean;
+  maxSubtractionError: number;
+  raw: SeriesStats;
+  noise: SeriesStats;
+  residual: SeriesStats;
+  noiseToRawStdRatio: number;
+  modelLikelyUntrained: boolean;
+  synthetic: boolean;
+  syntheticStrategy?: SyntheticStrategy;
+  residualMatchesGroundTruth: boolean | null;
+  maxGroundTruthError: number | null;
+  verdict: string;
+}
+
+function summarize(values: number[]): SeriesStats {
+  if (!values.length) {
+    return { mean: 0, std: 0, min: 0, max: 0 };
+  }
+
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+
+  return {
+    mean,
+    std: Math.sqrt(variance),
+    min: Math.min(...values),
+    max: Math.max(...values),
+  };
+}
+
 @Component({
   selector: 'app-diff-viewer',
   standalone: true,
@@ -106,6 +168,8 @@ export class DiffViewerComponent implements OnDestroy {
   readonly detector = signal<Detector>('H1');
   readonly duration = signal(4);
   readonly selectedEventId = signal(KNOWN_EVENTS[0].id);
+  readonly syntheticMode = signal(false);
+  readonly syntheticStrategy = signal<SyntheticStrategy>('oracle');
 
   readonly loading = signal(false);
   readonly elapsedSeconds = signal(0);
@@ -115,11 +179,24 @@ export class DiffViewerComponent implements OnDestroy {
   readonly rawSeries = computed<SeriesPoint[]>(() => this.buildSeries((r) => r.rawStrain));
   readonly noiseSeries = computed<SeriesPoint[]>(() => this.buildSeries((r) => r.predictedNoise));
   readonly residualSeries = computed<SeriesPoint[]>(() => this.buildSeries((r) => r.residual));
+  readonly groundTruthSeries = computed<SeriesPoint[]>(() => {
+    const result = this.result();
+    if (!result?.groundTruthSignal?.length) return [];
+    return toSeries(result.groundTruthSignal, result.sampleRate, result.t0, result.gpsTime);
+  });
+
+  readonly activeLoadingPhases = computed(() =>
+    this.syntheticMode() ? SYNTHETIC_LOADING_PHASES : LOADING_PHASES,
+  );
+
+  readonly activeLoadingSteps = computed(() =>
+    this.syntheticMode() ? SYNTHETIC_LOADING_STEPS : LOADING_STEPS,
+  );
 
   readonly loadingPhase = computed(() => {
     const elapsed = this.elapsedSeconds();
-    let phase = LOADING_PHASES[0];
-    for (const candidate of LOADING_PHASES) {
+    let phase = this.activeLoadingPhases()[0];
+    for (const candidate of this.activeLoadingPhases()) {
       if (elapsed >= candidate.afterSeconds) {
         phase = candidate;
       }
@@ -138,10 +215,11 @@ export class DiffViewerComponent implements OnDestroy {
 
   readonly loadingSteps = computed(() => {
     const activeStepId = this.loadingPhase().stepId;
-    const stepOrder = LOADING_STEPS.map((step) => step.id);
+    const steps = this.activeLoadingSteps();
+    const stepOrder = steps.map((step) => step.id);
     const activeIndex = stepOrder.indexOf(activeStepId);
 
-    return LOADING_STEPS.map((step, index) => ({
+    return steps.map((step, index) => ({
       ...step,
       active: index === activeIndex,
       done: index < activeIndex,
@@ -159,9 +237,18 @@ export class DiffViewerComponent implements OnDestroy {
     }
     const result = this.result();
     if (!result) {
-      return 'Pick an event below, then press Run analysis.';
+      return this.syntheticMode()
+        ? 'Synthetic validation is on — press Run analysis to inject a known burst.'
+        : 'Pick an event below, then press Run analysis.';
     }
     const elapsed = this.formattedElapsed();
+    if (result.synthetic) {
+      const strategy =
+        result.syntheticStrategy === 'model'
+          ? 'U-Net model mode'
+          : 'oracle mode (perfect noise mirror)';
+      return `Synthetic validation in ${elapsed} — ${strategy}.`;
+    }
     return result.cached
       ? `Loaded from cache in ${elapsed} — this result was fetched earlier.`
       : `Fresh result in ${elapsed} — just downloaded and analyzed.`;
@@ -178,6 +265,14 @@ export class DiffViewerComponent implements OnDestroy {
     const result = this.result();
     if (!result) return null;
 
+    if (result.synthetic) {
+      const strategy =
+        result.syntheticStrategy === 'model'
+          ? 'Synthetic validation · U-Net on fake data'
+          : 'Synthetic validation · oracle subtraction';
+      return `${strategy} · Window: ${this.duration()} seconds · Samples: ${result.rawStrain.length.toLocaleString()}`;
+    }
+
     const observatory =
       result.detector === 'H1'
         ? 'Hanford, Washington'
@@ -187,6 +282,90 @@ export class DiffViewerComponent implements OnDestroy {
 
     return `Observatory: ${observatory} · Window: ${this.duration()} seconds · Samples: ${result.rawStrain.length.toLocaleString()}`;
   });
+
+  readonly resultDiagnostics = computed((): ResultDiagnostics | null => {
+    const result = this.result();
+    if (!result) return null;
+
+    const raw = summarize(result.rawStrain);
+    const noise = summarize(result.predictedNoise);
+    const residual = summarize(result.residual);
+    const timeStart = result.t0 - result.gpsTime;
+    const timeEnd = timeStart + result.rawStrain.length / result.sampleRate;
+
+    let maxSubtractionError = 0;
+    for (let index = 0; index < result.rawStrain.length; index += 1) {
+      const expected = result.rawStrain[index] - result.predictedNoise[index];
+      maxSubtractionError = Math.max(
+        maxSubtractionError,
+        Math.abs(expected - result.residual[index]),
+      );
+    }
+
+    const lengthsMatch =
+      result.rawStrain.length === result.predictedNoise.length &&
+      result.rawStrain.length === result.residual.length;
+    const subtractionVerified = maxSubtractionError < 1e-6;
+    const noiseToRawStdRatio = raw.std > 0 ? noise.std / raw.std : 0;
+    const modelLikelyUntrained = !result.synthetic && noiseToRawStdRatio < 0.05;
+
+    let residualMatchesGroundTruth: boolean | null = null;
+    let maxGroundTruthError: number | null = null;
+    if (result.groundTruthSignal?.length) {
+      maxGroundTruthError = 0;
+      for (let index = 0; index < result.groundTruthSignal.length; index += 1) {
+        maxGroundTruthError = Math.max(
+          maxGroundTruthError,
+          Math.abs(result.residual[index] - result.groundTruthSignal[index]),
+        );
+      }
+      residualMatchesGroundTruth = maxGroundTruthError < 1e-4;
+    }
+
+    let verdict = 'Pipeline math checks out: arrays align and subtraction is exact.';
+    if (result.synthetic) {
+      if (result.syntheticStrategy === 'oracle') {
+        verdict = residualMatchesGroundTruth
+          ? 'Synthetic validation passed: subtracting the known noise recovered the injected burst.'
+          : 'Synthetic validation mismatch: residual does not match the injected signal.';
+      } else {
+        verdict = residualMatchesGroundTruth
+          ? 'Unexpected: the untrained U-Net matched the injected signal closely.'
+          : 'Expected in model mode: the untrained U-Net cannot recover the injected burst yet.';
+      }
+    } else if (modelLikelyUntrained) {
+      verdict +=
+        ' The U-Net is still untrained, so predicted noise is nearly flat and the residual looks like a shifted copy of the input.';
+    }
+
+    return {
+      timeStart,
+      timeEnd,
+      lengthsMatch,
+      subtractionVerified,
+      maxSubtractionError,
+      raw,
+      noise,
+      residual,
+      noiseToRawStdRatio,
+      modelLikelyUntrained,
+      synthetic: result.synthetic,
+      syntheticStrategy: result.syntheticStrategy,
+      residualMatchesGroundTruth,
+      maxGroundTruthError,
+      verdict,
+    };
+  });
+
+  toggleSyntheticMode(enabled: boolean): void {
+    this.syntheticMode.set(enabled);
+    this.result.set(null);
+    this.error.set(null);
+  }
+
+  formatStat(value: number): string {
+    return value.toFixed(4);
+  }
 
   private buildSeries(select: (r: DenoisedStrainResult) => number[]): SeriesPoint[] {
     const r = this.result();
@@ -215,6 +394,8 @@ export class DiffViewerComponent implements OnDestroy {
         gpsTime: this.gpsTime(),
         detector: this.detector(),
         duration: this.duration(),
+        synthetic: this.syntheticMode(),
+        syntheticStrategy: this.syntheticStrategy(),
       })
       .subscribe({
         next: (result) => {

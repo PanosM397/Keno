@@ -13,12 +13,24 @@ const client = axios.create({
 const DENOISE_TIMEOUT_MS = 300000;
 const HEALTH_TIMEOUT_MS = 5000;
 
-async function requestDenoising({ gpsTime, detector = 'H1', duration = 4 }) {
+async function requestDenoising({
+  gpsTime,
+  detector = 'H1',
+  duration = 4,
+  synthetic = false,
+  syntheticStrategy = 'oracle',
+}) {
   try {
     const { data } = await client.post(
       '/api/v1/denoise',
-      { gps_time: gpsTime, detector, duration },
-      { timeout: DENOISE_TIMEOUT_MS },
+      {
+        gps_time: gpsTime,
+        detector,
+        duration,
+        synthetic,
+        synthetic_strategy: syntheticStrategy,
+      },
+      { timeout: synthetic ? HEALTH_TIMEOUT_MS : DENOISE_TIMEOUT_MS },
     );
     return data;
   } catch (error) {

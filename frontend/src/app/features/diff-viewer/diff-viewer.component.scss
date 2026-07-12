@@ -294,6 +294,70 @@
   min-width: 0;
 }
 
+.diagnostics {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.diagnostics summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.diagnostics-verdict {
+  margin: 8px 0 0;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.diagnostics-verdict--warn {
+  color: #ffb347;
+}
+
+.diagnostics-verdict--pass {
+  color: var(--color-residual);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.toggle input {
+  accent-color: var(--color-residual);
+}
+
+.toggle-hint {
+  margin: 6px 0 0;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 8px 0 0;
+}
+
+.diagnostics-grid dt {
+  color: var(--color-text-tertiary);
+}
+
+.diagnostics-grid dd {
+  margin: 0;
+  text-align: right;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
 .panels {
   display: flex;
   flex-direction: column;

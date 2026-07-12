@@ -6,4 +6,5 @@ venv/
 *.gwf
 *.hdf5
 checkpoints/
+data/background_cache/
 .DS_Store

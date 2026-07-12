@@ -41,6 +41,29 @@
 
       <details class="advanced">
         <summary>Advanced settings</summary>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="syntheticMode()"
+            (ngModelChange)="toggleSyntheticMode($event)"
+          />
+          <span>Synthetic validation mode</span>
+        </label>
+        <p class="toggle-hint">
+          Skips GWOSC and injects a known burst into fake detector noise to prove subtraction works.
+        </p>
+        @if (syntheticMode()) {
+          <div class="field">
+            <span class="field-label">Validation strategy</span>
+            <select
+              [ngModel]="syntheticStrategy()"
+              (ngModelChange)="syntheticStrategy.set($event); result.set(null)"
+            >
+              <option value="oracle">Oracle — perfect noise mirror (recommended)</option>
+              <option value="model">Model — run the live U-Net</option>
+            </select>
+          </div>
+        }
         <div class="field">
           <span class="field-label">Timestamp</span>
           <input class="mono" type="number" step="0.1" [ngModel]="gpsTime()" (ngModelChange)="gpsTime.set($event)" />
@@ -104,6 +127,57 @@
       @if (resultSummary()) {
         <div class="meta">{{ resultSummary() }}</div>
       }
+
+      @if (resultDiagnostics(); as diagnostics) {
+        <details class="diagnostics" open>
+          <summary>Pipeline diagnostics</summary>
+          <p class="diagnostics-verdict" [class.diagnostics-verdict--warn]="diagnostics.modelLikelyUntrained" [class.diagnostics-verdict--pass]="diagnostics.residualMatchesGroundTruth === true">
+            {{ diagnostics.verdict }}
+          </p>
+          <dl class="diagnostics-grid mono">
+            <dt>Time window</dt>
+            <dd>{{ formatStat(diagnostics.timeStart) }}s to {{ formatStat(diagnostics.timeEnd) }}s</dd>
+            <dt>Mode</dt>
+            <dd>{{ diagnostics.synthetic ? 'Synthetic' : 'GWOSC' }}</dd>
+            @if (diagnostics.syntheticStrategy) {
+              <dt>Strategy</dt>
+              <dd>{{ diagnostics.syntheticStrategy }}</dd>
+            }
+            <dt>Array lengths</dt>
+            <dd>{{ diagnostics.lengthsMatch ? 'Matched' : 'Mismatch' }}</dd>
+            <dt>Subtraction check</dt>
+            <dd>
+              {{
+                diagnostics.subtractionVerified
+                  ? 'Exact (max error ' + diagnostics.maxSubtractionError.toExponential(1) + ')'
+                  : 'Failed'
+              }}
+            </dd>
+            @if (diagnostics.maxGroundTruthError !== null) {
+              <dt>Ground-truth match</dt>
+              <dd>
+                {{
+                  diagnostics.residualMatchesGroundTruth
+                    ? 'Passed (max error ' + diagnostics.maxGroundTruthError.toExponential(1) + ')'
+                    : 'Failed (max error ' + diagnostics.maxGroundTruthError.toExponential(1) + ')'
+                }}
+              </dd>
+            }
+            <dt>Raw std</dt>
+            <dd>{{ formatStat(diagnostics.raw.std) }}</dd>
+            <dt>Noise std</dt>
+            <dd>{{ formatStat(diagnostics.noise.std) }}</dd>
+            <dt>Noise / raw std</dt>
+            <dd>{{ formatStat(diagnostics.noiseToRawStdRatio) }}</dd>
+            <dt>Raw mean</dt>
+            <dd>{{ formatStat(diagnostics.raw.mean) }}</dd>
+            <dt>Noise mean</dt>
+            <dd>{{ formatStat(diagnostics.noise.mean) }}</dd>
+            <dt>Residual mean</dt>
+            <dd>{{ formatStat(diagnostics.residual.mean) }}</dd>
+          </dl>
+        </details>
+      }
     </aside>
 
     <main class="panels">
@@ -137,6 +211,18 @@
         [loading]="loading()"
         [loadingMessage]="loadingStatusMessage()"
       />
+      @if (groundTruthSeries().length) {
+        <app-chart-panel
+          [step]="4"
+          title="Known injected burst (ground truth)"
+          description="The hidden signal we buried in the synthetic noise — the residual should match this in oracle mode."
+          accentColor="#8eb8ff"
+          group="gw-sync"
+          [points]="groundTruthSeries()"
+          [loading]="loading()"
+          [loadingMessage]="loadingStatusMessage()"
+        />
+      }
     </main>
   </div>
 </div>

@@ -6,13 +6,19 @@ const logger = require('../utils/logger');
 
 async function getDenoisedStrain(req, res, next) {
   try {
-    const { gpsTime, detector = 'H1', duration = 4 } = req.query;
+    const { gpsTime, detector = 'H1', duration = 4, synthetic, syntheticStrategy = 'oracle' } = req.query;
 
     if (!gpsTime || Number.isNaN(Number(gpsTime))) {
       throw new ApiError(400, 'A valid numeric gpsTime query parameter is required');
     }
 
-    const params = { gpsTime: Number(gpsTime), detector, duration: Number(duration) };
+    const params = {
+      gpsTime: Number(gpsTime),
+      detector,
+      duration: Number(duration),
+      synthetic: synthetic === 'true',
+      syntheticStrategy,
+    };
     const cached = cacheService.get('denoised-strain', params);
     if (cached) {
       logger.info(`Cache hit for gpsTime=${params.gpsTime} detector=${detector}`);

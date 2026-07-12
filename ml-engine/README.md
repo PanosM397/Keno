@@ -45,4 +45,22 @@ app/
 
 ## Model
 
-`NoiseDenoiser1DUNet` (`app/models/unet.py`) is a 1D U-Net that maps a raw strain segment to a predicted noise tensor of the same shape. It is currently randomly initialized; point `MODEL_CHECKPOINT_PATH` in `.env` at a trained checkpoint (state dict) to load trained weights. Training on the GWOSC "Gravity Spy" glitch dataset is a separate offline pipeline, not included in this inference service.
+`NoiseDenoiser1DUNet` (`app/models/unet.py`) is a 1D U-Net that maps a raw strain segment to a predicted noise tensor of the same shape. Point `MODEL_CHECKPOINT_PATH` in `.env` (default `checkpoints/unet_denoiser.pt`) at a trained checkpoint (state dict) to load trained weights; if the path doesn't exist the service falls back to random initialization.
+
+## Training
+
+`app/training/` contains an offline training pipeline that teaches the U-Net to reconstruct real detector noise while ignoring burst-like anomalies:
+
+```bash
+python -m app.training.train --epochs 5 --steps-per-epoch 50
+```
+
+**How it works — signal-injection training:**
+
+1. `background_fetcher.py` downloads and disk-caches (`data/background_cache/`) several real, event-free strain segments from GWOSC across O1/O2/O3, whitened the same way inference is. These serve as ground-truth "noise-only" targets — real burst examples are far too rare to train on directly, so we synthesize supervision instead.
+2. `dataset.py` builds training pairs on the fly: `input = real_noise + random_injected_burst` (randomized amplitude/frequency/timing, present ~70% of the time so the model also learns the "nothing here" case), `target = real_noise`. Both are normalized by the same per-window std used at inference time (`subtraction_model.py`) so training and serving see matching distributions.
+3. `train.py` runs a standard MSE regression loop and saves a state dict to `--output` (default: `MODEL_CHECKPOINT_PATH`).
+
+This is the standard technique for training GW denoising/subtraction models: real noise is abundant, real unmodeled bursts are not, so labeled pairs are manufactured via injection. Restart the ML engine (or redeploy) after training to pick up the new checkpoint.
+
+Key flags: `--epochs`, `--steps-per-epoch`, `--batch-size`, `--window-seconds` (must match inference request duration), `--background-duration` (length of each cached segment windows are cropped from).

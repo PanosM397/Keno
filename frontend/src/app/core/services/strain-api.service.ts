@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { DenoiseQuery, DenoisedStrainResult } from '../models/strain.models';
+import { DenoiseQuery, DenoisedStrainResult, SyntheticStrategy } from '../models/strain.models';
 
 interface DenoisedStrainResponse {
   detector: string;
@@ -14,6 +14,10 @@ interface DenoisedStrainResponse {
   predicted_noise: number[];
   residual: number[];
   cached: boolean;
+  synthetic?: boolean;
+  synthetic_strategy?: SyntheticStrategy;
+  ground_truth_signal?: number[];
+  ground_truth_noise?: number[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -22,10 +26,16 @@ export class StrainApiService {
   private readonly baseUrl = environment.apiBaseUrl;
 
   getDenoisedStrain(query: DenoiseQuery): Observable<DenoisedStrainResult> {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('gpsTime', query.gpsTime)
       .set('detector', query.detector)
       .set('duration', query.duration);
+
+    if (query.synthetic) {
+      params = params
+        .set('synthetic', 'true')
+        .set('syntheticStrategy', query.syntheticStrategy ?? 'oracle');
+    }
 
     return this.http
       .get<DenoisedStrainResponse>(`${this.baseUrl}/strain/denoised`, { params })
@@ -42,6 +52,10 @@ export class StrainApiService {
       predictedNoise: response.predicted_noise,
       residual: response.residual,
       cached: response.cached,
+      synthetic: response.synthetic ?? false,
+      syntheticStrategy: response.synthetic_strategy,
+      groundTruthSignal: response.ground_truth_signal,
+      groundTruthNoise: response.ground_truth_noise,
     };
   }
 }
