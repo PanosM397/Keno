@@ -1,10 +1,30 @@
-__pycache__/
-*.pyc
+# Virtual environments
 .venv/
+.venv*/
 venv/
+env/
+
+# Secrets
 .env
+.env.*
+!.env.example
+
+# Downloaded / generated data
+data/
 *.gwf
 *.hdf5
+*.npy
 checkpoints/
-data/background_cache/
+*.pt
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
 .DS_Store
+Thumbs.db
