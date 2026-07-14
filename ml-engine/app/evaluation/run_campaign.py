@@ -266,6 +266,7 @@ def _build_summary(
             [
                 "Thresholds (last seed calibration):",
                 f"  mismatched_mf:  {thresholds['mismatched_mf']:.4f}",
+                f"  excess_power:   {thresholds['excess_power']:.4f}",
                 f"  keno (noise):   {thresholds['keno']:.4f}  (residual RMS ratio)",
                 f"  keno (signal):  {KENO_OVERLAP_THRESHOLD:.4f}  (waveform overlap)",
                 "",
@@ -275,7 +276,7 @@ def _build_summary(
     injected = [r for r in records if r["injected"]]
     noise_only = [r for r in records if not r["injected"]]
 
-    for method in ("oracle_mf", "mismatched_mf", "keno"):
+    for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno"):
         method_injected = [r for r in injected if r["method"] == method]
         if not method_injected and method == "oracle_mf":
             continue
@@ -341,7 +342,7 @@ def _plot_efficiency(
     config: CampaignConfig,
     path: Path,
     *,
-    methods: tuple[str, ...] = ("oracle_mf", "mismatched_mf", "keno"),
+    methods: tuple[str, ...] = ("oracle_mf", "mismatched_mf", "excess_power", "keno"),
     title_suffix: str = "",
 ) -> None:
     try:
@@ -353,6 +354,7 @@ def _plot_efficiency(
     styles = {
         "oracle_mf": ("Oracle MF (true template)", "#3498db", "o--"),
         "mismatched_mf": ("Mismatched MF (fixed template)", "#e74c3c", "d--"),
+        "excess_power": ("Excess power (cWB-style)", "#9b59b6", "^-"),
         "keno": ("Keno (generative subtraction)", "#2ecc71", "s-"),
     }
 
@@ -478,7 +480,7 @@ def _build_far_sweep_summary(
         injected = [r for r in records if r["injected"]]
         noise_only = [r for r in records if not r["injected"]]
 
-        for method in ("oracle_mf", "mismatched_mf", "keno"):
+        for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno"):
             method_injected = [r for r in injected if r["method"] == method]
             if not method_injected and method == "oracle_mf":
                 continue
@@ -508,7 +510,7 @@ def _build_far_sweep_summary(
             "- Keno injected-trial detection uses fixed overlap threshold "
             f"({KENO_OVERLAP_THRESHOLD:.2f}), not FAR-calibrated.",
             "- Keno noise-only FAR uses residual RMS ratio threshold calibrated per target FAR.",
-            "- Mismatched MF threshold is calibrated on noise-only trials at each target FAR.",
+            "- Mismatched MF and excess-power thresholds are calibrated on noise-only trials at each target FAR.",
             "",
         ]
     )
@@ -534,6 +536,7 @@ def _plot_far_sweep(
     styles = {
         "oracle_mf": ("Oracle MF", "#3498db", "o--"),
         "mismatched_mf": ("Mismatched MF", "#e74c3c", "d--"),
+        "excess_power": ("Excess power", "#9b59b6", "^-"),
         "keno": ("Keno", "#2ecc71", "s-"),
     }
 
@@ -570,7 +573,7 @@ def _plot_far_sweep(
         fontsize=11,
     )
     handles, labels = axes[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=9, bbox_to_anchor=(0.5, -0.02))
+    fig.legend(handles, labels, loc="lower center", ncol=4, fontsize=9, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout()
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)

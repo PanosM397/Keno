@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.signal import correlate
+from scipy.signal import correlate, stft
 
 
 def recovery_error(residual: np.ndarray, ground_truth_signal: np.ndarray) -> float:
@@ -24,6 +24,39 @@ def normalized_recovery_error(residual: np.ndarray, ground_truth_signal: np.ndar
     if signal_rms == 0.0:
         return float("inf")
     return float(np.sqrt(np.mean(error**2)) / signal_rms)
+
+
+def excess_power_peak(
+    data: np.ndarray,
+    sample_rate: float = 4096.0,
+    *,
+    nperseg: int = 256,
+    noverlap: int = 192,
+) -> float:
+    """Peak normalized time-frequency excess power (cWB-style, template-free).
+
+    Computes an STFT on whitened strain and returns the maximum bin power
+    relative to the median power (robust noise-floor estimate). Bursts
+    appear as localized excess energy in the time-frequency plane.
+    """
+    data = data - data.mean()
+    data_std = float(np.std(data))
+    if data_std == 0.0:
+        return 0.0
+
+    _, _, spectrum = stft(
+        data,
+        fs=sample_rate,
+        nperseg=nperseg,
+        noverlap=noverlap,
+        window="hann",
+        boundary=None,
+    )
+    power = np.abs(spectrum) ** 2
+    noise_floor = float(np.median(power))
+    if noise_floor <= 0.0:
+        return 0.0
+    return float(np.max(power) / noise_floor)
 
 
 def matched_filter_peak(data: np.ndarray, template: np.ndarray) -> float:

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from app.evaluation.inject import DEFAULT_SAMPLE_RATE
 from app.evaluation.metrics import (
+    excess_power_peak,
     matched_filter_peak,
     normalized_recovery_error,
     recovery_error,
@@ -50,6 +52,19 @@ def mismatched_matched_filter(raw: np.ndarray, decoy_template: np.ndarray) -> Me
     )
 
 
+def excess_power_search(
+    raw: np.ndarray,
+    sample_rate: float = DEFAULT_SAMPLE_RATE,
+) -> MethodResult:
+    """Template-free burst search via peak STFT excess power (cWB-style)."""
+    return MethodResult(
+        method="excess_power",
+        residual=raw,
+        detection_stat=excess_power_peak(raw, sample_rate),
+        higher_is_detection=True,
+    )
+
+
 def keno_recovery(
     raw: np.ndarray,
     ground_truth_signal: np.ndarray | None = None,
@@ -85,6 +100,7 @@ def evaluate_trial_raw(trial) -> list[dict]:
     """Run all methods and return stats without applying FAR thresholds."""
     method_results: list[MethodResult] = [
         mismatched_matched_filter(trial.raw, trial.decoy_template),
+        excess_power_search(trial.raw),
         keno_recovery(trial.raw, trial.signal if trial.target_snr > 0.0 else None),
     ]
     if trial.target_snr > 0.0:
@@ -168,10 +184,12 @@ def calibrate_method_thresholds(
         mismatched_matched_filter(trial.raw, trial.decoy_template).detection_stat
         for trial in noise_trials
     ]
+    excess_stats = [excess_power_search(trial.raw).detection_stat for trial in noise_trials]
     keno_stats = [keno_recovery(trial.raw, None).detection_stat for trial in noise_trials]
 
     percentile = (1.0 - target_false_alarm_rate) * 100.0
     return {
         "mismatched_mf": float(np.percentile(mismatched_stats, percentile)),
+        "excess_power": float(np.percentile(excess_stats, percentile)),
         "keno": float(np.percentile(keno_stats, percentile)),
     }
