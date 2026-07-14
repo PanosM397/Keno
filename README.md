@@ -42,3 +42,11 @@ npx @angular/cli new frontend --style=scss --routing --skip-git --strict
 2. The Express backend checks its in-memory cache; on a miss, it forwards the request to the ML engine.
 3. The ML engine (`/ml-engine`) fetches raw strain via `gwpy`/GWOSC, runs it through the 1D U-Net denoiser, and returns `raw_strain`, `predicted_noise`, and `residual` arrays.
 4. The backend caches and relays the response to the frontend, which renders all three series in synchronized visualizers.
+
+## Scientific validation
+
+Keno is evaluated against template-based baselines (including AresGW-like fixed-template matched filtering) using injection campaigns on real LIGO background noise. See [`docs/SCIENTIFIC_VALIDATION.md`](./docs/SCIENTIFIC_VALIDATION.md) and run:
+
+```bash
+cd ml-engine && python -m app.prove
+```

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, inference
+from app.api.routes import detect, health, inference
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,6 +19,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(inference.router, prefix="/api/v1")
+app.include_router(detect.router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn

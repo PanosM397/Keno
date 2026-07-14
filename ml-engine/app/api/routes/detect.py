@@ -1,0 +1,37 @@
+from fastapi import APIRouter, HTTPException
+
+from app.api.schemas import DetectRequest, DetectResponse
+from app.services.gwosc_fetcher import fetch_whitened_strain_as_arrays
+from app.services.residual_search import analyze_strain
+from app.services.subtraction_model import engine
+
+router = APIRouter()
+
+
+@router.post("/detect", response_model=DetectResponse)
+def detect(request: DetectRequest) -> DetectResponse:
+    """Subtract predicted noise, then run template-free excess-power on raw vs residual."""
+    try:
+        segment = fetch_whitened_strain_as_arrays(request.gps_time, request.detector, request.duration)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"GWOSC fetch failed: {exc}") from exc
+
+    analysis = analyze_strain(segment["strain"], sample_rate=segment["sample_rate"])
+
+    return DetectResponse(
+        detector=segment["detector"],
+        gps_time=request.gps_time,
+        sample_rate=segment["sample_rate"],
+        t0=segment["t0"],
+        raw_strain=analysis.raw_strain.tolist(),
+        predicted_noise=analysis.predicted_noise.tolist(),
+        residual=analysis.residual.tolist(),
+        raw_excess_power=analysis.raw_excess_power,
+        residual_excess_power=analysis.residual_excess_power,
+        excess_power_improvement=analysis.excess_power_improvement,
+        raw_detected=analysis.raw_detected,
+        residual_detected=analysis.residual_detected,
+        false_alarm_rate=analysis.false_alarm_rate,
+        thresholds=analysis.thresholds,
+        checkpoint_loaded=engine.checkpoint_loaded,
+    )

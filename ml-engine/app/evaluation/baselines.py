@@ -65,11 +65,26 @@ def excess_power_search(
     )
 
 
+def keno_subtracted_excess_power(
+    raw: np.ndarray,
+    sample_rate: float = DEFAULT_SAMPLE_RATE,
+) -> MethodResult:
+    """Production path: subtract noise, then template-free excess power on residual."""
+    result = engine.subtract(raw)
+    residual = result["residual"]
+    return MethodResult(
+        method="keno_residual_ep",
+        residual=residual,
+        detection_stat=excess_power_peak(residual, sample_rate),
+        higher_is_detection=True,
+    )
+
+
 def keno_recovery(
     raw: np.ndarray,
     ground_truth_signal: np.ndarray | None = None,
 ) -> MethodResult:
-    """Keno: generative subtraction with recovery-based detection."""
+    """Keno: generative subtraction with recovery-based detection (eval-only overlap)."""
     result = engine.subtract(raw)
     residual = result["residual"]
     overlap = signal_overlap(residual, ground_truth_signal) if ground_truth_signal is not None else None
@@ -101,6 +116,7 @@ def evaluate_trial_raw(trial) -> list[dict]:
     method_results: list[MethodResult] = [
         mismatched_matched_filter(trial.raw, trial.decoy_template),
         excess_power_search(trial.raw),
+        keno_subtracted_excess_power(trial.raw),
         keno_recovery(trial.raw, trial.signal if trial.target_snr > 0.0 else None),
     ]
     if trial.target_snr > 0.0:
@@ -185,11 +201,15 @@ def calibrate_method_thresholds(
         for trial in noise_trials
     ]
     excess_stats = [excess_power_search(trial.raw).detection_stat for trial in noise_trials]
+    keno_residual_ep_stats = [
+        keno_subtracted_excess_power(trial.raw).detection_stat for trial in noise_trials
+    ]
     keno_stats = [keno_recovery(trial.raw, None).detection_stat for trial in noise_trials]
 
     percentile = (1.0 - target_false_alarm_rate) * 100.0
     return {
         "mismatched_mf": float(np.percentile(mismatched_stats, percentile)),
         "excess_power": float(np.percentile(excess_stats, percentile)),
+        "keno_residual_ep": float(np.percentile(keno_residual_ep_stats, percentile)),
         "keno": float(np.percentile(keno_stats, percentile)),
     }

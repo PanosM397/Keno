@@ -31,6 +31,30 @@ class DenoiseResponse(BaseModel):
     ground_truth_noise: list[float] | None = None
 
 
+class DetectRequest(BaseModel):
+    gps_time: float = Field(..., description="Central GPS timestamp of the segment to analyze")
+    detector: str = Field(default="H1", description="Detector code, e.g. H1, L1, V1")
+    duration: int = Field(default=4, ge=1, le=32, description="Segment duration in seconds")
+
+
+class DetectResponse(BaseModel):
+    detector: str
+    gps_time: float
+    sample_rate: float
+    t0: float
+    raw_strain: list[float]
+    predicted_noise: list[float]
+    residual: list[float]
+    raw_excess_power: float
+    residual_excess_power: float
+    excess_power_improvement: float
+    raw_detected: bool
+    residual_detected: bool
+    false_alarm_rate: float
+    thresholds: dict[str, float]
+    checkpoint_loaded: bool
+
+
 class HealthResponse(BaseModel):
     status: str
     device: str

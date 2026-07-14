@@ -6,10 +6,20 @@ Generative denoising service: predicts the instrumental/quantum noise component 
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn main:app --reload
+```
+
+**Important:** Always activate `.venv` before running training, evaluation, or `app.prove`.
+System `python3` does not have project dependencies (e.g. `gwpy`).
+
+Quick proof pipeline (creates venv if missing):
+
+```bash
+./prove.sh
+./prove.sh --train
 ```
 
 The server starts on `http://localhost:8000` by default. Interactive API docs are available at `http://localhost:8000/docs`.
@@ -20,6 +30,16 @@ The server starts on `http://localhost:8000` by default. Interactive API docs ar
 | ------ | ----------------- | ----------------------------------------------------------------------------- |
 | GET    | `/health`         | Service + model health                                                       |
 | POST   | `/api/v1/denoise` | Body: `gps_time`, `detector`, `duration`. Fetches strain via GWOSC, runs the model, returns `raw_strain`, `predicted_noise`, `residual` |
+| POST   | `/api/v1/detect`  | Same fetch + subtraction, plus template-free excess-power on raw vs residual with calibrated detection flags |
+
+## Scientific proof pipeline
+
+```bash
+python -m app.prove                  # validate + campaign + report
+python -m app.prove --skip-campaign  # reuse existing evaluation CSVs
+```
+
+See [`docs/SCIENTIFIC_VALIDATION.md`](../docs/SCIENTIFIC_VALIDATION.md) for methodology.
 
 ## GWOSC Data Fetcher
 
