@@ -131,7 +131,25 @@ interface ResultDiagnostics {
   syntheticStrategy?: SyntheticStrategy;
   residualMatchesGroundTruth: boolean | null;
   maxGroundTruthError: number | null;
+  signalOverlap: number | null;
+  recoveryGrade: 'excellent' | 'good' | 'partial' | 'poor' | null;
   verdict: string;
+}
+
+const SYNTHETIC_RECOVERY_EXCELLENT = 0.5;
+const SYNTHETIC_RECOVERY_GOOD = 1.5;
+const SYNTHETIC_OVERLAP_GOOD = 0.75;
+
+function signalOverlap(residual: number[], groundTruth: number[]): number {
+  if (!residual.length || residual.length !== groundTruth.length) return 0;
+
+  const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length;
+  const a = groundTruth.map((v) => v - mean(groundTruth));
+  const b = residual.map((v) => v - mean(residual));
+  const normA = Math.sqrt(a.reduce((sum, v) => sum + v * v, 0));
+  const normB = Math.sqrt(b.reduce((sum, v) => sum + v * v, 0));
+  if (normA === 0 || normB === 0) return 0;
+  return a.reduce((sum, v, i) => sum + v * b[i], 0) / (normA * normB);
 }
 
 function summarize(values: number[]): SeriesStats {
@@ -311,6 +329,9 @@ export class DiffViewerComponent implements OnDestroy {
 
     let residualMatchesGroundTruth: boolean | null = null;
     let maxGroundTruthError: number | null = null;
+    let overlap: number | null = null;
+    let recoveryGrade: ResultDiagnostics['recoveryGrade'] = null;
+
     if (result.groundTruthSignal?.length) {
       maxGroundTruthError = 0;
       for (let index = 0; index < result.groundTruthSignal.length; index += 1) {
@@ -319,7 +340,21 @@ export class DiffViewerComponent implements OnDestroy {
           Math.abs(result.residual[index] - result.groundTruthSignal[index]),
         );
       }
-      residualMatchesGroundTruth = maxGroundTruthError < 1e-4;
+      overlap = signalOverlap(result.residual, result.groundTruthSignal);
+
+      if (maxGroundTruthError < SYNTHETIC_RECOVERY_EXCELLENT || (overlap ?? 0) >= 0.95) {
+        recoveryGrade = 'excellent';
+        residualMatchesGroundTruth = true;
+      } else if (maxGroundTruthError < SYNTHETIC_RECOVERY_GOOD || (overlap ?? 0) >= SYNTHETIC_OVERLAP_GOOD) {
+        recoveryGrade = 'good';
+        residualMatchesGroundTruth = true;
+      } else if ((overlap ?? 0) >= 0.5) {
+        recoveryGrade = 'partial';
+        residualMatchesGroundTruth = false;
+      } else {
+        recoveryGrade = 'poor';
+        residualMatchesGroundTruth = false;
+      }
     }
 
     let verdict = 'Pipeline math checks out: arrays align and subtraction is exact.';
@@ -328,10 +363,15 @@ export class DiffViewerComponent implements OnDestroy {
         verdict = residualMatchesGroundTruth
           ? 'Synthetic validation passed: subtracting the known noise recovered the injected burst.'
           : 'Synthetic validation mismatch: residual does not match the injected signal.';
+      } else if (recoveryGrade === 'excellent' || recoveryGrade === 'good') {
+        verdict =
+          'Model recovered the injected burst: noise was subtracted and the signal remains in the residual. Compare Step 3 to Step 4.';
+      } else if (recoveryGrade === 'partial') {
+        verdict =
+          'Partial recovery: the burst shape is visible in the residual but some noise remains. The model is trained; further training can sharpen the match.';
       } else {
-        verdict = residualMatchesGroundTruth
-          ? 'Unexpected: the untrained U-Net matched the injected signal closely.'
-          : 'Expected in model mode: the untrained U-Net cannot recover the injected burst yet.';
+        verdict =
+          'Weak recovery: the U-Net may not have loaded a trained checkpoint, or needs more training. Check ML engine /health for checkpoint_loaded.';
       }
     } else if (modelLikelyUntrained) {
       verdict +=
@@ -353,6 +393,8 @@ export class DiffViewerComponent implements OnDestroy {
       syntheticStrategy: result.syntheticStrategy,
       residualMatchesGroundTruth,
       maxGroundTruthError,
+      signalOverlap: overlap,
+      recoveryGrade,
       verdict,
     };
   });

@@ -154,14 +154,20 @@
               }}
             </dd>
             @if (diagnostics.maxGroundTruthError !== null) {
-              <dt>Ground-truth match</dt>
+              <dt>Recovery error</dt>
               <dd>
                 {{
-                  diagnostics.residualMatchesGroundTruth
-                    ? 'Passed (max error ' + diagnostics.maxGroundTruthError.toExponential(1) + ')'
-                    : 'Failed (max error ' + diagnostics.maxGroundTruthError.toExponential(1) + ')'
+                  diagnostics.recoveryGrade === 'excellent' || diagnostics.recoveryGrade === 'good'
+                    ? 'Good (max ' + diagnostics.maxGroundTruthError.toFixed(2) + ')'
+                    : diagnostics.recoveryGrade === 'partial'
+                      ? 'Partial (max ' + diagnostics.maxGroundTruthError.toFixed(2) + ')'
+                      : 'Weak (max ' + diagnostics.maxGroundTruthError.toFixed(2) + ')'
                 }}
               </dd>
+            }
+            @if (diagnostics.signalOverlap !== null) {
+              <dt>Signal overlap</dt>
+              <dd>{{ formatStat(diagnostics.signalOverlap) }}</dd>
             }
             <dt>Raw std</dt>
             <dd>{{ formatStat(diagnostics.raw.std) }}</dd>

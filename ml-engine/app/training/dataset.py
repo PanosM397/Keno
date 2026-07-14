@@ -6,7 +6,7 @@ denoising/subtraction models on gravitational-wave strain, we synthesize
 supervision pairs by injecting randomized burst-like signals into real
 background noise:
 
-    input  = real_noise + random_injected_burst (burst is present ~70% of the time)
+    input  = real_noise + random_injected_burst (burst is present ~50% of the time)
     target = real_noise
 
 The model is trained to reconstruct only the noise component, which teaches
@@ -30,6 +30,7 @@ class NoiseInjectionDataset(Dataset):
         window_seconds: int,
         samples_per_epoch: int,
         seed: int = 0,
+        injection_probability: float = 0.5,
     ):
         if not background_segments:
             raise ValueError("At least one background segment is required for training")
@@ -38,6 +39,7 @@ class NoiseInjectionDataset(Dataset):
         self.sample_rate = sample_rate
         self.window_samples = int(window_seconds * sample_rate)
         self.samples_per_epoch = samples_per_epoch
+        self.injection_probability = injection_probability
         self._rng = np.random.default_rng(seed)
 
         too_short = [len(s) for s in self.segments if len(s) < self.window_samples]
@@ -50,14 +52,16 @@ class NoiseInjectionDataset(Dataset):
     def __len__(self) -> int:
         return self.samples_per_epoch
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         segment = self.segments[self._rng.integers(0, len(self.segments))]
         start = self._rng.integers(0, len(segment) - self.window_samples + 1)
         noise = segment[start : start + self.window_samples].astype(np.float64)
 
         times = np.arange(self.window_samples, dtype=np.float64) / self.sample_rate
         times -= times.mean()
-        burst = random_injected_burst(times, self._rng)
+        burst, _ = random_injected_burst(
+            times, self._rng, injection_probability=self.injection_probability
+        )
 
         raw = noise + burst
 
@@ -70,4 +74,6 @@ class NoiseInjectionDataset(Dataset):
 
         input_tensor = torch.as_tensor(raw / scale, dtype=torch.float32).unsqueeze(0)
         target_tensor = torch.as_tensor(noise / scale, dtype=torch.float32).unsqueeze(0)
-        return input_tensor, target_tensor
+        burst_tensor = torch.as_tensor(burst / scale, dtype=torch.float32).unsqueeze(0)
+        has_burst = torch.tensor(float(np.std(burst) > 0.0), dtype=torch.float32)
+        return input_tensor, target_tensor, burst_tensor, has_burst

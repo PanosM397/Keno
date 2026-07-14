@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 
+from typing import Literal
+
 import numpy as np
 
 DEFAULT_SAMPLE_RATE = 4096.0
@@ -15,6 +17,9 @@ NOISE_STD = 1.0
 SIGNAL_AMPLITUDE = 4.5
 SIGNAL_FREQUENCY = 60.0
 SIGNAL_WIDTH_SECONDS = 0.18
+
+BurstType = Literal["sine_gaussian", "ringdown", "white_noise_burst"]
+BURST_TYPES: tuple[BurstType, ...] = ("sine_gaussian", "ringdown", "white_noise_burst")
 
 
 def _seed_from_request(gps_time: float, detector: str, duration: int) -> int:
@@ -46,24 +51,21 @@ def _injected_burst(times: np.ndarray) -> np.ndarray:
     return signal
 
 
-def random_injected_burst(
+def _normalize_unit_std(shape: np.ndarray) -> np.ndarray:
+    std = float(np.std(shape))
+    if std == 0.0:
+        return shape
+    return shape / std
+
+
+def _random_sine_gaussian(
     times: np.ndarray,
     rng: np.random.Generator,
-    injection_probability: float = 0.7,
-    amplitude_range: tuple[float, float] = (1.5, 6.0),
-    frequency_range: tuple[float, float] = (20.0, 300.0),
-    width_range: tuple[float, float] = (0.03, 0.25),
+    frequency_range: tuple[float, float],
+    width_range: tuple[float, float],
 ) -> np.ndarray:
-    """A randomized unmodeled-burst-like injection for training augmentation.
-
-    Returns an all-zero array with `1 - injection_probability` chance so the
-    model also learns the (common) case of "no anomaly present" and does not
-    hallucinate structure into the residual.
-    """
-    if rng.random() > injection_probability:
-        return np.zeros_like(times)
-
-    amplitude = rng.uniform(*amplitude_range)
+    """Symmetric oscillatory burst — the classic sine-Gaussian/Morlet wavelet
+    morphology used to represent generic unmodeled transients."""
     frequency = rng.uniform(*frequency_range)
     width = rng.uniform(*width_range)
     center = rng.uniform(times.min() * 0.5, times.max() * 0.5)
@@ -71,9 +73,99 @@ def random_injected_burst(
 
     envelope = np.exp(-0.5 * ((times - center) / width) ** 2)
     carrier = np.sin(2 * np.pi * frequency * (times - center) + phase)
-    burst = amplitude * envelope * carrier
+    return envelope * carrier
+
+
+def _random_ringdown(
+    times: np.ndarray,
+    rng: np.random.Generator,
+    frequency_range: tuple[float, float],
+) -> np.ndarray:
+    """Causal, one-sided exponentially-decaying sinusoid — stands in for
+    ringdown-like transients (e.g. post-merger or instrumental relaxation)
+    that are asymmetric in time, unlike a sine-Gaussian."""
+    frequency = rng.uniform(*frequency_range)
+    decay_time = rng.uniform(0.01, 0.08)
+    center = rng.uniform(times.min() * 0.5, times.max() * 0.5)
+    phase = rng.uniform(0, 2 * np.pi)
+
+    delta = times - center
+    envelope = np.where(delta >= 0, np.exp(-delta / decay_time), 0.0)
+    carrier = np.sin(2 * np.pi * frequency * delta + phase)
+    return envelope * carrier
+
+
+def _random_white_noise_burst(
+    times: np.ndarray,
+    rng: np.random.Generator,
+    width_range: tuple[float, float],
+) -> np.ndarray:
+    """Band-limited noise burst — stands in for irregular, non-sinusoidal
+    unmodeled transients with no single dominant frequency."""
+    num_samples = len(times)
+    dt = float(times[1] - times[0]) if num_samples > 1 else 1.0
+    sample_rate = 1.0 / dt if dt > 0 else 4096.0
+
+    low_frequency = rng.uniform(30.0, 150.0)
+    bandwidth = rng.uniform(50.0, 250.0)
+    high_frequency = min(low_frequency + bandwidth, sample_rate / 2.0 - 1.0)
+    width = rng.uniform(*width_range)
+    center = rng.uniform(times.min() * 0.5, times.max() * 0.5)
+
+    raw_noise = rng.standard_normal(num_samples)
+    frequencies = np.fft.rfftfreq(num_samples, d=dt)
+    spectrum = np.fft.rfft(raw_noise)
+    band_mask = (frequencies >= low_frequency) & (frequencies <= high_frequency)
+    band_limited = np.fft.irfft(spectrum * band_mask, n=num_samples)
+    band_limited = _normalize_unit_std(band_limited)
+
+    envelope = np.exp(-0.5 * ((times - center) / width) ** 2)
+    return envelope * band_limited
+
+
+def injected_burst_shape(
+    times: np.ndarray,
+    rng: np.random.Generator,
+    burst_type: BurstType,
+    frequency_range: tuple[float, float] = (20.0, 300.0),
+    width_range: tuple[float, float] = (0.03, 0.25),
+) -> np.ndarray:
+    """Draw a unit-variance burst waveform of the requested morphology family."""
+    if burst_type == "sine_gaussian":
+        shape = _random_sine_gaussian(times, rng, frequency_range, width_range)
+    elif burst_type == "ringdown":
+        shape = _random_ringdown(times, rng, frequency_range)
+    else:
+        shape = _random_white_noise_burst(times, rng, width_range)
+
+    burst = _normalize_unit_std(shape)
     burst -= burst.mean()
     return burst
+
+
+def random_injected_burst(
+    times: np.ndarray,
+    rng: np.random.Generator,
+    injection_probability: float = 0.7,
+    amplitude_range: tuple[float, float] = (1.5, 6.0),
+    frequency_range: tuple[float, float] = (20.0, 300.0),
+    width_range: tuple[float, float] = (0.03, 0.25),
+    burst_type: BurstType | None = None,
+) -> tuple[np.ndarray, BurstType | None]:
+    """Randomized unmodeled-burst injection for training / evaluation.
+
+    Returns ``(burst, burst_type)`` where ``burst_type`` is ``None`` when no
+    injection is drawn (``injection_probability`` miss).
+    """
+    if rng.random() > injection_probability:
+        return np.zeros_like(times), None
+
+    chosen_type: BurstType = burst_type or rng.choice(BURST_TYPES)
+    shape = injected_burst_shape(times, rng, chosen_type, frequency_range, width_range)
+    amplitude = rng.uniform(*amplitude_range)
+    burst = amplitude * shape
+    burst -= burst.mean()
+    return burst, chosen_type
 
 
 def generate_synthetic_segment(

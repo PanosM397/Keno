@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -6,19 +7,43 @@ import torch
 from app.core.config import settings
 from app.models.unet import NoiseDenoiser1DUNet
 
+logger = logging.getLogger(__name__)
+
 
 class GenerativeSubtractionEngine:
     def __init__(self):
         self.device = torch.device(settings.device)
         self.model = NoiseDenoiser1DUNet().to(self.device)
+        self.checkpoint_loaded = False
         self._load_checkpoint()
         self.model.eval()
 
     def _load_checkpoint(self) -> None:
         checkpoint_path = Path(settings.model_checkpoint_path)
-        if checkpoint_path.exists():
+        if not checkpoint_path.exists():
+            self.checkpoint_loaded = False
+            return
+
+        try:
             state_dict = torch.load(checkpoint_path, map_location=self.device)
             self.model.load_state_dict(state_dict)
+            self.checkpoint_loaded = True
+        except Exception as exc:
+            # E.g. checkpoint saved by a different model shape (architecture
+            # change mid-retrain). Fall back to random weights instead of
+            # crashing the whole API process; /health surfaces the failure.
+            logger.warning(
+                "Failed to load checkpoint %s (%s). Falling back to random-initialized weights.",
+                checkpoint_path,
+                exc,
+            )
+            self.checkpoint_loaded = False
+
+    def reload_checkpoint(self) -> bool:
+        """Reload weights from disk (e.g. after retraining). Returns True if loaded."""
+        self._load_checkpoint()
+        self.model.eval()
+        return self.checkpoint_loaded
 
     @torch.no_grad()
     def predict_noise(self, normalized_strain: np.ndarray) -> np.ndarray:

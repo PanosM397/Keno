@@ -35,3 +35,5 @@ class HealthResponse(BaseModel):
     status: str
     device: str
     model_loaded: bool
+    checkpoint_loaded: bool
+    checkpoint_path: str

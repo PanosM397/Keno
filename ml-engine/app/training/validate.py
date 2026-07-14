@@ -16,6 +16,8 @@ import sys
 
 import numpy as np
 
+from app.evaluation.inject import load_cached_segments, sample_injection_trial
+from app.evaluation.metrics import normalized_recovery_error, signal_overlap
 from app.services.gwosc_fetcher import fetch_whitened_strain_as_arrays
 from app.services.subtraction_model import engine
 from app.services.synthetic_strain import denoise_synthetic
@@ -24,16 +26,33 @@ from app.services.synthetic_strain import denoise_synthetic
 _DEFAULT_VALIDATION_GPS = 1_000_000_000.0
 _DEFAULT_VALIDATION_DETECTOR = "H1"
 
-# Thresholds for Phase 1 — tuned for a first trained checkpoint; tighten later.
-_MAX_SYNTHETIC_RECOVERY_ERROR = 1.0
+# Thresholds aligned with training/evaluation (real GWOSC noise + injected bursts).
+_MAX_NORMALIZED_RECOVERY_ERROR = 0.08
+_MIN_SIGNAL_OVERLAP = 0.95
 _MIN_NOISE_TO_RAW_STD_RATIO = 0.15
+
+# Legacy AR(1) synthetic demo — different noise statistics than GWOSC training data.
+_MAX_LEGACY_SYNTHETIC_NORMALIZED_RECOVERY = 0.08
 
 
 def _recovery_error(residual: np.ndarray, ground_truth_signal: np.ndarray) -> float:
     return float(np.max(np.abs(residual - ground_truth_signal)))
 
 
-def validate_synthetic_model() -> tuple[bool, float]:
+def validate_injection_on_cached_background() -> tuple[bool, float, float]:
+    """Inject a random burst into real cached GWOSC noise (matches training domain)."""
+    segments = load_cached_segments()
+    rng = np.random.default_rng(123)
+    trial = sample_injection_trial(segments, window_seconds=4.0, target_snr=4.0, rng=rng, morphology="unknown")
+    result = engine.subtract(trial.raw)
+    normalized = normalized_recovery_error(result["residual"], trial.signal)
+    overlap = signal_overlap(result["residual"], trial.signal)
+    passed = normalized < _MAX_NORMALIZED_RECOVERY_ERROR and overlap >= _MIN_SIGNAL_OVERLAP
+    return passed, normalized, overlap
+
+
+def validate_legacy_ar_synthetic() -> tuple[bool, float, float]:
+    """Legacy check on AR(1) colored noise — not the same domain as GWOSC training."""
     result = denoise_synthetic(
         _DEFAULT_VALIDATION_GPS,
         _DEFAULT_VALIDATION_DETECTOR,
@@ -41,8 +60,9 @@ def validate_synthetic_model() -> tuple[bool, float]:
         strategy="model",
     )
     error = _recovery_error(result["residual"], result["ground_truth_signal"])
-    passed = error < _MAX_SYNTHETIC_RECOVERY_ERROR
-    return passed, error
+    normalized = normalized_recovery_error(result["residual"], result["ground_truth_signal"])
+    passed = normalized < _MAX_LEGACY_SYNTHETIC_NORMALIZED_RECOVERY
+    return passed, error, normalized
 
 
 def validate_real_data(gps_time: float, detector: str, duration: int) -> tuple[bool, float]:
@@ -71,13 +91,20 @@ def main() -> None:
     print("Phase 1 validation")
     print("=" * 50)
 
-    print("\n[1/2] Synthetic model mode (injected burst recovery)...")
-    synth_ok, synth_error = validate_synthetic_model()
-    status = "PASS" if synth_ok else "FAIL"
-    print(f"  Max recovery error: {synth_error:.4f} (threshold < {_MAX_SYNTHETIC_RECOVERY_ERROR})")
+    print("\n[1/3] Injected burst on cached GWOSC noise (training domain)...")
+    inject_ok, normalized, overlap = validate_injection_on_cached_background()
+    status = "PASS" if inject_ok else "FAIL"
+    print(f"  Normalized recovery error: {normalized:.4f} (threshold < {_MAX_NORMALIZED_RECOVERY_ERROR})")
+    print(f"  Signal overlap: {overlap:.4f} (threshold >= {_MIN_SIGNAL_OVERLAP})")
     print(f"  Result: {status}")
 
-    print(f"\n[2/2] Real data noise prediction (GPS {args.gps_time}, {args.detector})...")
+    print("\n[2/3] Legacy AR(1) synthetic demo (informational — different noise model)...")
+    legacy_ok, legacy_peak, legacy_normalized = validate_legacy_ar_synthetic()
+    print(f"  Peak recovery error: {legacy_peak:.4f}")
+    print(f"  Normalized recovery error: {legacy_normalized:.4f}")
+    print(f"  Result: {'PASS' if legacy_ok else 'FAIL (expected if not trained on AR noise)'}")
+
+    print(f"\n[3/3] Real data noise prediction (GPS {args.gps_time}, {args.detector})...")
     print("  Fetching from GWOSC — may take 1–3 minutes on first run...")
     real_ok, ratio = validate_real_data(args.gps_time, args.detector, args.duration)
     status = "PASS" if real_ok else "FAIL"
@@ -85,13 +112,13 @@ def main() -> None:
     print(f"  Result: {status}")
 
     print("\n" + "=" * 50)
-    if synth_ok and real_ok:
+    if inject_ok and real_ok:
         print("Overall: PASS — model ready for Phase 2 evaluation.")
         sys.exit(0)
 
     print("Overall: FAIL — continue training or tune hyperparameters.")
-    if not synth_ok:
-        print("  - Model is not recovering synthetic bursts yet.")
+    if not inject_ok:
+        print("  - Model is not preserving injected bursts on real GWOSC noise.")
     if not real_ok:
         print("  - Predicted noise looks too flat on real data (likely undertrained).")
     sys.exit(1)
