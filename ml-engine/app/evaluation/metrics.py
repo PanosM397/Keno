@@ -43,6 +43,7 @@ def excess_power_peak(
     data_std = float(np.std(data))
     if data_std == 0.0:
         return 0.0
+    data = data / data_std
 
     _, _, spectrum = stft(
         data,
