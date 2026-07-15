@@ -3,7 +3,14 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { DenoiseQuery, DenoisedStrainResult, SyntheticStrategy } from '../models/strain.models';
+import {
+  CoincidenceResult,
+  DenoiseQuery,
+  DenoisedStrainResult,
+  DetectionStats,
+  Detector,
+  SyntheticStrategy,
+} from '../models/strain.models';
 
 interface DenoisedStrainResponse {
   detector: string;
@@ -18,6 +25,41 @@ interface DenoisedStrainResponse {
   synthetic_strategy?: SyntheticStrategy;
   ground_truth_signal?: number[];
   ground_truth_noise?: number[];
+}
+
+interface DetectStrainResponse extends DenoisedStrainResponse {
+  raw_excess_power: number;
+  residual_excess_power: number;
+  excess_power_improvement: number;
+  raw_detected: boolean;
+  residual_detected: boolean;
+  false_alarm_rate: number;
+  thresholds: {
+    excess_power_raw: number;
+    excess_power_residual: number;
+  };
+  calibration_note: string;
+  checkpoint_loaded: boolean;
+}
+
+interface CoincidenceResponse {
+  gps_time: number;
+  duration: number;
+  detectors: Array<{
+    detector: string;
+    available: boolean;
+    raw_excess_power: number | null;
+    residual_excess_power: number | null;
+    raw_detected: boolean;
+    residual_detected: boolean;
+    error?: string;
+  }>;
+  raw_coincident: boolean;
+  residual_coincident: boolean;
+  false_alarm_rate: number;
+  calibration_note: string;
+  checkpoint_loaded: boolean;
+  cached?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -40,6 +82,80 @@ export class StrainApiService {
     return this.http
       .get<DenoisedStrainResponse>(`${this.baseUrl}/strain/denoised`, { params })
       .pipe(map((response) => this.toResult(response)));
+  }
+
+  getStrainDetection(query: Omit<DenoiseQuery, 'synthetic' | 'syntheticStrategy'>): Observable<DenoisedStrainResult> {
+    const params = new HttpParams()
+      .set('gpsTime', query.gpsTime)
+      .set('detector', query.detector)
+      .set('duration', query.duration);
+
+    return this.http
+      .get<DetectStrainResponse>(`${this.baseUrl}/strain/detect`, { params })
+      .pipe(map((response) => this.toDetectResult(response)));
+  }
+
+  getStrainCoincidence(
+    query: Omit<DenoiseQuery, 'synthetic' | 'syntheticStrategy' | 'detector'> & {
+      detectors?: Detector[];
+    },
+  ): Observable<CoincidenceResult> {
+    const params = new HttpParams()
+      .set('gpsTime', query.gpsTime)
+      .set('duration', query.duration)
+      .set('detectors', (query.detectors ?? ['H1', 'L1']).join(','));
+
+    return this.http
+      .get<CoincidenceResponse>(`${this.baseUrl}/strain/detect/coincidence`, { params })
+      .pipe(map((response) => this.toCoincidenceResult(response)));
+  }
+
+  private toCoincidenceResult(response: CoincidenceResponse): CoincidenceResult {
+    return {
+      gpsTime: response.gps_time,
+      duration: response.duration,
+      detectors: response.detectors.map((detector) => ({
+        detector: detector.detector as Detector,
+        available: detector.available,
+        rawExcessPower: detector.raw_excess_power,
+        residualExcessPower: detector.residual_excess_power,
+        rawDetected: detector.raw_detected,
+        residualDetected: detector.residual_detected,
+        error: detector.error,
+      })),
+      rawCoincident: response.raw_coincident,
+      residualCoincident: response.residual_coincident,
+      falseAlarmRate: response.false_alarm_rate,
+      calibrationNote: response.calibration_note,
+      checkpointLoaded: response.checkpoint_loaded,
+      cached: response.cached,
+    };
+  }
+
+  private toDetectResult(response: DetectStrainResponse): DenoisedStrainResult {
+    return {
+      ...this.toResult(response),
+      detection: this.toDetectionStats(response),
+    };
+  }
+
+  private toDetectionStats(response: DetectStrainResponse): DetectionStats {
+    return {
+      rawExcessPower: response.raw_excess_power,
+      residualExcessPower: response.residual_excess_power,
+      excessPowerRatio: response.excess_power_improvement,
+      rawDetected: response.raw_detected,
+      residualDetected: response.residual_detected,
+      falseAlarmRate: response.false_alarm_rate,
+      thresholds: {
+        excessPowerRaw: response.thresholds.excess_power_raw,
+        excessPowerResidual: response.thresholds.excess_power_residual,
+      },
+      calibrationNote:
+        response.calibration_note ??
+        'Noise-only GWOSC background calibration; residual threshold uses artifact-trimmed calibration.',
+      checkpointLoaded: response.checkpoint_loaded,
+    };
   }
 
   private toResult(response: DenoisedStrainResponse): DenoisedStrainResult {

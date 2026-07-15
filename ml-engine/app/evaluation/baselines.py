@@ -13,8 +13,12 @@ from app.evaluation.metrics import (
     normalized_recovery_error,
     recovery_error,
     residual_rms_ratio,
+    robust_false_alarm_threshold,
     signal_overlap,
 )
+
+# Upper-tail fraction trimmed before calibrating keno_residual_ep (subtraction glitches).
+KENO_RESIDUAL_EP_ARTIFACT_TRIM = 0.01
 from app.services.subtraction_model import engine
 
 # Overlap threshold for Keno on injected trials (recovery-based detection).
@@ -210,6 +214,10 @@ def calibrate_method_thresholds(
     return {
         "mismatched_mf": float(np.percentile(mismatched_stats, percentile)),
         "excess_power": float(np.percentile(excess_stats, percentile)),
-        "keno_residual_ep": float(np.percentile(keno_residual_ep_stats, percentile)),
+        "keno_residual_ep": robust_false_alarm_threshold(
+            keno_residual_ep_stats,
+            target_false_alarm_rate,
+            artifact_trim_fraction=KENO_RESIDUAL_EP_ARTIFACT_TRIM,
+        ),
         "keno": float(np.percentile(keno_stats, percentile)),
     }

@@ -358,6 +358,166 @@
   overflow-wrap: anywhere;
 }
 
+.detection,
+.detection-unavailable {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.detection summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.detection-verdict {
+  margin: 8px 0 0;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.detection-verdict--pass {
+  color: var(--color-residual);
+}
+
+.detection-verdict--advantage {
+  color: #8eb8ff;
+}
+
+.detection-far {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.detection-calibration-note {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
+.detection-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.detection-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.detection-card--residual {
+  border-color: rgba(43, 255, 194, 0.25);
+}
+
+.detection-card--trigger {
+  border-color: rgba(43, 255, 194, 0.45);
+  background: rgba(43, 255, 194, 0.06);
+}
+
+.detection-card-label {
+  grid-column: 1 / -1;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.detection-card-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.detection-card-threshold {
+  justify-self: end;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.detection-flag {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+}
+
+.detection-flag--on {
+  color: var(--color-residual);
+}
+
+.detection-unavailable {
+  margin: 0;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
+.coincidence {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.coincidence summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.coincidence-verdict {
+  margin: 8px 0 0;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.coincidence-verdict--pass {
+  color: var(--color-residual);
+}
+
+.coincidence-table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.coincidence-table th,
+.coincidence-table td {
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.coincidence-table th {
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+.coincidence-row--unavailable td {
+  color: var(--color-text-tertiary);
+}
+
+.coincidence-cell--on {
+  color: var(--color-residual);
+  font-weight: 600;
+}
+
+.coincidence-footer {
+  margin: 8px 0 0;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
 .panels {
   display: flex;
   flex-direction: column;

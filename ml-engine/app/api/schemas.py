@@ -52,6 +52,34 @@ class DetectResponse(BaseModel):
     residual_detected: bool
     false_alarm_rate: float
     thresholds: dict[str, float]
+    calibration_note: str
+    checkpoint_loaded: bool
+
+
+class DetectorCoincidenceResponse(BaseModel):
+    detector: str
+    available: bool
+    raw_excess_power: float | None = None
+    residual_excess_power: float | None = None
+    raw_detected: bool = False
+    residual_detected: bool = False
+    error: str | None = None
+
+
+class CoincidenceRequest(BaseModel):
+    gps_time: float = Field(..., description="Central GPS timestamp shared by all detectors")
+    detectors: list[str] = Field(default=["H1", "L1"], min_length=1, description="Detector codes")
+    duration: int = Field(default=4, ge=1, le=32, description="Segment duration in seconds")
+
+
+class CoincidenceResponse(BaseModel):
+    gps_time: float
+    duration: int
+    detectors: list[DetectorCoincidenceResponse]
+    raw_coincident: bool
+    residual_coincident: bool
+    false_alarm_rate: float
+    calibration_note: str
     checkpoint_loaded: bool
 
 

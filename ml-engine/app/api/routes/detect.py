@@ -1,11 +1,42 @@
 from fastapi import APIRouter, HTTPException
 
-from app.api.schemas import DetectRequest, DetectResponse
+from app.api.schemas import (
+    CoincidenceRequest,
+    CoincidenceResponse,
+    DetectRequest,
+    DetectResponse,
+    DetectorCoincidenceResponse,
+)
+from app.services.coincidence_search import run_coincidence_search
 from app.services.gwosc_fetcher import fetch_whitened_strain_as_arrays
 from app.services.residual_search import analyze_strain
 from app.services.subtraction_model import engine
 
 router = APIRouter()
+
+
+def _to_coincidence_response(result) -> CoincidenceResponse:
+    return CoincidenceResponse(
+        gps_time=result.gps_time,
+        duration=result.duration,
+        detectors=[
+            DetectorCoincidenceResponse(
+                detector=det.detector,
+                available=det.available,
+                raw_excess_power=det.raw_excess_power,
+                residual_excess_power=det.residual_excess_power,
+                raw_detected=det.raw_detected,
+                residual_detected=det.residual_detected,
+                error=det.error,
+            )
+            for det in result.detectors
+        ],
+        raw_coincident=result.raw_coincident,
+        residual_coincident=result.residual_coincident,
+        false_alarm_rate=result.false_alarm_rate,
+        calibration_note=result.calibration_note,
+        checkpoint_loaded=result.checkpoint_loaded,
+    )
 
 
 @router.post("/detect", response_model=DetectResponse)
@@ -33,5 +64,25 @@ def detect(request: DetectRequest) -> DetectResponse:
         residual_detected=analysis.residual_detected,
         false_alarm_rate=analysis.false_alarm_rate,
         thresholds=analysis.thresholds,
+        calibration_note=analysis.calibration_note,
         checkpoint_loaded=engine.checkpoint_loaded,
     )
+
+
+@router.post("/detect/coincidence", response_model=CoincidenceResponse)
+def detect_coincidence(request: CoincidenceRequest) -> CoincidenceResponse:
+    """Run template-free excess-power search on multiple detectors at the same GPS time."""
+    if not request.detectors:
+        raise HTTPException(status_code=400, detail="At least one detector is required")
+
+    result = run_coincidence_search(
+        request.gps_time,
+        tuple(request.detectors),
+        request.duration,
+    )
+    if not result.available_detectors:
+        raise HTTPException(
+            status_code=502,
+            detail="No detector data available for this GPS time",
+        )
+    return _to_coincidence_response(result)

@@ -68,4 +68,65 @@ async function getEventMetadata(req, res, next) {
   }
 }
 
-module.exports = { getDenoisedStrain, getEventCatalog, getEventMetadata };
+async function getStrainDetection(req, res, next) {
+  try {
+    const { gpsTime, detector = 'H1', duration = 4 } = req.query;
+
+    if (!gpsTime || Number.isNaN(Number(gpsTime))) {
+      throw new ApiError(400, 'A valid numeric gpsTime query parameter is required');
+    }
+
+    const params = {
+      gpsTime: Number(gpsTime),
+      detector,
+      duration: Number(duration),
+    };
+    const cached = cacheService.get('strain-detection', params);
+    if (cached) {
+      logger.info(`Detection cache hit for gpsTime=${params.gpsTime} detector=${detector}`);
+      return res.json({ ...cached, cached: true });
+    }
+
+    const result = await mlEngineService.requestDetection(params);
+    cacheService.set('strain-detection', params, result);
+
+    return res.json({ ...result, cached: false });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getStrainCoincidence(req, res, next) {
+  try {
+    const { gpsTime, duration = 4, detectors = 'H1,L1' } = req.query;
+
+    if (!gpsTime || Number.isNaN(Number(gpsTime))) {
+      throw new ApiError(400, 'A valid numeric gpsTime query parameter is required');
+    }
+
+    const detectorList = String(detectors)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const params = {
+      gpsTime: Number(gpsTime),
+      duration: Number(duration),
+      detectors: detectorList,
+    };
+    const cached = cacheService.get('strain-coincidence', params);
+    if (cached) {
+      logger.info(`Coincidence cache hit for gpsTime=${params.gpsTime}`);
+      return res.json({ ...cached, cached: true });
+    }
+
+    const result = await mlEngineService.requestCoincidenceDetection(params);
+    cacheService.set('strain-coincidence', params, result);
+
+    return res.json({ ...result, cached: false });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { getDenoisedStrain, getStrainDetection, getStrainCoincidence, getEventCatalog, getEventMetadata };

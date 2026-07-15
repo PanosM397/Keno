@@ -23,7 +23,11 @@ CALIBRATION_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "eva
 _DEFAULT_THRESHOLDS = {
     "false_alarm_rate": 0.01,
     "excess_power_raw": 115.9449,
-    "excess_power_residual": 98.0,
+    "excess_power_residual": 2310.0,
+    "calibration_note": (
+        "Noise-only GWOSC background at 1.0% FAR; "
+        "residual threshold uses artifact-trimmed calibration."
+    ),
 }
 
 
@@ -39,6 +43,7 @@ class ResidualSearchResult:
     excess_power_improvement: float
     false_alarm_rate: float
     thresholds: dict[str, float]
+    calibration_note: str
 
 
 def load_calibration(path: Path = CALIBRATION_PATH) -> dict[str, float]:
@@ -48,6 +53,9 @@ def load_calibration(path: Path = CALIBRATION_PATH) -> dict[str, float]:
             "false_alarm_rate": float(payload.get("false_alarm_rate", _DEFAULT_THRESHOLDS["false_alarm_rate"])),
             "excess_power_raw": float(payload["excess_power_raw"]),
             "excess_power_residual": float(payload["excess_power_residual"]),
+            "calibration_note": str(
+                payload.get("calibration_note", _DEFAULT_THRESHOLDS["calibration_note"]),
+            ),
         }
     return dict(_DEFAULT_THRESHOLDS)
 
@@ -85,4 +93,5 @@ def analyze_strain(
             "excess_power_raw": raw_threshold,
             "excess_power_residual": residual_threshold,
         },
+        calibration_note=str(cal.get("calibration_note", _DEFAULT_THRESHOLDS["calibration_note"])),
     )

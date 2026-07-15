@@ -114,6 +114,31 @@ def calibrate_threshold(
     return float(np.percentile(noise_only_stats, percentile))
 
 
+def robust_false_alarm_threshold(
+    noise_only_stats: list[float] | np.ndarray,
+    false_alarm_rate: float,
+    *,
+    artifact_trim_fraction: float = 0.01,
+) -> float:
+    """Calibrate after trimming rare upper-tail subtraction glitches.
+
+    Imperfect noise subtraction can produce huge excess-power spikes on
+    noise-only residuals. Dropping the upper ``artifact_trim_fraction`` before
+    computing the (1 − FAR) percentile avoids thresholds dominated by those
+    artifacts while keeping false alarms near target on typical background.
+    """
+    values = np.sort(np.asarray(noise_only_stats, dtype=float))
+    if values.size == 0:
+        return float("inf")
+
+    trim_n = int(np.ceil(artifact_trim_fraction * values.size))
+    trim_n = min(max(trim_n, 0), max(values.size - 1, 0))
+    inliers = values[: values.size - trim_n] if trim_n else values
+
+    percentile = (1.0 - false_alarm_rate) * 100.0
+    return float(np.percentile(inliers, percentile))
+
+
 def is_detected(statistic: float, threshold: float, higher_is_detection: bool = True) -> bool:
     if higher_is_detection:
         return statistic >= threshold

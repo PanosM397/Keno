@@ -20,9 +20,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.evaluation.baselines import calibrate_method_thresholds
+from app.evaluation.baselines import KENO_RESIDUAL_EP_ARTIFACT_TRIM, calibrate_method_thresholds
 from app.evaluation.inject import load_cached_segments, sample_noise_only_trial
 from app.evaluation.run_campaign import CampaignConfig, run_campaign, run_far_sweep
+from app.evaluation.run_coincidence import (
+    run_known_event_study,
+    run_noise_coincidence_study,
+    write_outputs as write_coincidence_outputs,
+)
 from app.services.subtraction_model import engine
 
 logger = logging.getLogger(__name__)
@@ -59,6 +64,12 @@ def export_calibration(false_alarm_rate: float = 0.01) -> Path:
         "excess_power_residual": thresholds["keno_residual_ep"],
         "mismatched_mf": thresholds["mismatched_mf"],
         "keno_noise_rms_ratio": thresholds["keno"],
+        "residual_ep_artifact_trim_fraction": KENO_RESIDUAL_EP_ARTIFACT_TRIM,
+        "calibration_note": (
+            f"Noise-only GWOSC background at {false_alarm_rate:.1%} target FAR. "
+            f"Residual excess-power threshold trims the upper "
+            f"{KENO_RESIDUAL_EP_ARTIFACT_TRIM:.0%} of subtraction-glitched trials before calibration."
+        ),
     }
 
     CALIBRATION_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +100,7 @@ def write_report(
     summary_text: str,
     far_summary_text: str,
     morphology_text: str,
+    coincidence_text: str,
 ) -> Path:
     metrics = _parse_summary_metrics(summary_text)
     passed_validate = validate_exit_code == 0
@@ -146,6 +158,10 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 
 {morphology_text}
 
+## Multi-detector coincidence (Phase 3)
+
+{coincidence_text}
+
 ## How to read results
 
 - **keno_residual_ep** — production path: subtract noise, excess power on residual. This is what physicists should trust for blind searches.
@@ -173,7 +189,7 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 
 - [ ] keno_residual_ep beats raw excess_power at 0.1% FAR on unknown morphology
 - [ ] Mean normalized recovery error < 0.15 on held-out injections
-- [ ] Multi-detector coherence (H1 + L1)
+- [x] Multi-detector coherence (H1 + L1) — see coincidence section above
 - [ ] Comparison on real O3 glitch catalogs, not just Gaussian noise
 - [ ] Blind follow-up on published cWB event lists
 
@@ -218,12 +234,32 @@ def prove(args: argparse.Namespace) -> int:
         if not args.quick:
             run_far_sweep(config, [0.001, 0.01, 0.1])
 
+    coincidence_text = "(not run)"
+    if not args.skip_coincidence:
+        noise_trials = 10 if args.quick else 50
+        known_records, known_results = run_known_event_study(4)
+        noise_records = run_noise_coincidence_study(
+            noise_trials=noise_trials,
+            duration=4,
+            seed=42,
+        )
+        coincidence_path = write_coincidence_outputs(
+            known_records=known_records,
+            known_results=known_results,
+            noise_records=noise_records,
+            output_dir=EVAL_DIR,
+        )
+        coincidence_text = _read_summary(coincidence_path)
+    elif (EVAL_DIR / "coincidence_summary.txt").exists():
+        coincidence_text = _read_summary(EVAL_DIR / "coincidence_summary.txt")
+
     report_path = write_report(
         validate_exit_code=validate_code,
         calibration=calibration,
         summary_text=_read_summary(EVAL_DIR / "summary.txt"),
         far_summary_text=_read_summary(EVAL_DIR / "far_sweep_summary.txt"),
         morphology_text=_read_summary(EVAL_DIR / "morphology_breakdown.txt"),
+        coincidence_text=coincidence_text,
     )
 
     print("\n" + "=" * 60)
@@ -240,6 +276,7 @@ def prove(args: argparse.Namespace) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-campaign", action="store_true", help="Reuse existing evaluation outputs")
+    parser.add_argument("--skip-coincidence", action="store_true", help="Skip Phase 3 multi-detector study")
     parser.add_argument("--quick", action="store_true", help="Small campaign for smoke testing")
     parser.add_argument("--train", action="store_true", help="Retrain before validation")
     parser.add_argument("--epochs", type=int, default=50)

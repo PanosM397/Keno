@@ -49,4 +49,44 @@ async function checkHealth() {
   }
 }
 
-module.exports = { requestDenoising, checkHealth };
+async function requestDetection({ gpsTime, detector = 'H1', duration = 4 }) {
+  try {
+    const { data } = await client.post(
+      '/api/v1/detect',
+      {
+        gps_time: gpsTime,
+        detector,
+        duration,
+      },
+      { timeout: DENOISE_TIMEOUT_MS },
+    );
+    return data;
+  } catch (error) {
+    logger.error('ML engine detection request failed', error.message);
+    throw new ApiError(502, 'Failed to reach the ML inference engine', error.message);
+  }
+}
+
+async function requestCoincidenceDetection({
+  gpsTime,
+  detectors = ['H1', 'L1'],
+  duration = 4,
+}) {
+  try {
+    const { data } = await client.post(
+      '/api/v1/detect/coincidence',
+      {
+        gps_time: gpsTime,
+        detectors,
+        duration,
+      },
+      { timeout: DENOISE_TIMEOUT_MS },
+    );
+    return data;
+  } catch (error) {
+    logger.error('ML engine coincidence request failed', error.message);
+    throw new ApiError(502, 'Failed to reach the ML inference engine', error.message);
+  }
+}
+
+module.exports = { requestDenoising, requestDetection, requestCoincidenceDetection, checkHealth };

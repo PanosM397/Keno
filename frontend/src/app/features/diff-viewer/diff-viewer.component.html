@@ -184,6 +184,107 @@
           </dl>
         </details>
       }
+
+      @if (detectionStats(); as detection) {
+        <details class="detection" open>
+          <summary>Blind search (template-free)</summary>
+          @if (detectionSummary(); as summary) {
+            <p
+              class="detection-verdict"
+              [class.detection-verdict--pass]="detection.residualDetected"
+              [class.detection-verdict--advantage]="summary.signalInResidual && !detection.residualDetected"
+            >
+              {{ summary.verdict }}
+            </p>
+            <p class="detection-far">{{ summary.farLabel }} · keno_residual_ep · noise-calibrated</p>
+            <p class="detection-calibration-note">{{ summary.calibrationNote }}</p>
+          }
+          <div class="detection-cards">
+            <div class="detection-card" [class.detection-card--trigger]="detection.rawDetected">
+              <span class="detection-card-label">Raw excess power</span>
+              <span class="detection-card-value mono">{{ formatExcessPower(detection.rawExcessPower) }}</span>
+              <span class="detection-card-threshold mono">
+                threshold {{ formatExcessPower(detection.thresholds.excessPowerRaw) }}
+                · {{ formatThresholdPercent(detection.rawExcessPower, detection.thresholds.excessPowerRaw) }}
+              </span>
+              <span class="detection-flag" [class.detection-flag--on]="detection.rawDetected">
+                {{ detection.rawDetected ? 'Trigger' : 'Below threshold' }}
+              </span>
+            </div>
+            <div class="detection-card detection-card--residual" [class.detection-card--trigger]="detection.residualDetected">
+              <span class="detection-card-label">Residual excess power</span>
+              <span class="detection-card-value mono">{{ formatExcessPower(detection.residualExcessPower) }}</span>
+              <span class="detection-card-threshold mono">
+                threshold {{ formatExcessPower(detection.thresholds.excessPowerResidual) }}
+                · {{ formatThresholdPercent(detection.residualExcessPower, detection.thresholds.excessPowerResidual) }}
+              </span>
+              <span class="detection-flag" [class.detection-flag--on]="detection.residualDetected">
+                {{ detection.residualDetected ? 'Trigger' : 'Below threshold' }}
+              </span>
+            </div>
+          </div>
+          <dl class="diagnostics-grid mono">
+            <dt>Residual / raw EP</dt>
+            <dd>{{ formatStat(detection.excessPowerRatio) }}</dd>
+            <dt>Checkpoint</dt>
+            <dd>{{ detection.checkpointLoaded ? 'Loaded' : 'Missing' }}</dd>
+          </dl>
+        </details>
+      } @else if (result() && !result()?.synthetic) {
+        <p class="detection-unavailable">Blind search stats unavailable for this result.</p>
+      }
+
+      @if (coincidence(); as coincidenceResult) {
+        <details class="coincidence" open>
+          <summary>H1 + L1 coincidence</summary>
+          @if (coincidenceSummary(); as summary) {
+            <p
+              class="coincidence-verdict"
+              [class.coincidence-verdict--pass]="coincidenceResult.residualCoincident"
+            >
+              {{ summary }}
+            </p>
+          }
+          <table class="coincidence-table mono">
+            <thead>
+              <tr>
+                <th>Detector</th>
+                <th>Raw EP</th>
+                <th>Res EP</th>
+                <th>Raw</th>
+                <th>Residual</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of coincidenceResult.detectors; track row.detector) {
+                <tr [class.coincidence-row--unavailable]="!row.available">
+                  <td>{{ row.detector }}</td>
+                  @if (row.available) {
+                    <td>{{ formatExcessPower(row.rawExcessPower ?? 0) }}</td>
+                    <td>{{ formatExcessPower(row.residualExcessPower ?? 0) }}</td>
+                    <td [class.coincidence-cell--on]="row.rawDetected">
+                      {{ row.rawDetected ? 'Trigger' : 'No' }}
+                    </td>
+                    <td [class.coincidence-cell--on]="row.residualDetected">
+                      {{ row.residualDetected ? 'Trigger' : 'No' }}
+                    </td>
+                  } @else {
+                    <td colspan="4">{{ row.error ?? 'Unavailable' }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+          <p class="coincidence-footer">
+            Residual coincidence:
+            <strong [class.coincidence-cell--on]="coincidenceResult.residualCoincident">
+              {{ coincidenceResult.residualCoincident ? 'Yes' : 'No' }}
+            </strong>
+            · Raw coincidence:
+            <strong>{{ coincidenceResult.rawCoincident ? 'Yes' : 'No' }}</strong>
+          </p>
+        </details>
+      }
     </aside>
 
     <main class="panels">
