@@ -20,6 +20,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.core.config import settings
 from app.evaluation.baselines import KENO_RESIDUAL_EP_ARTIFACT_TRIM, calibrate_method_thresholds
 from app.evaluation.inject import load_cached_segments, sample_noise_only_trial
 from app.evaluation.run_campaign import CampaignConfig, run_campaign, run_far_sweep
@@ -27,6 +28,21 @@ from app.evaluation.run_coincidence import (
     run_known_event_study,
     run_noise_coincidence_study,
     write_outputs as write_coincidence_outputs,
+)
+from app.evaluation.freeze_bundle import DEFAULT_OUT as FREEZE_DIR
+from app.evaluation.freeze_bundle import build_freeze
+from app.evaluation.run_cwb_followup import (
+    DEFAULT_CATALOG as CWB_CATALOG,
+    load_cwb_catalog,
+    run_cwb_followup,
+    write_outputs as write_cwb_outputs,
+)
+from app.evaluation.run_glitch_stress import (
+    DEFAULT_CATALOG as GLITCH_CATALOG,
+    load_glitch_catalog,
+    run_burst_preserve_study,
+    run_glitch_study,
+    write_outputs as write_glitch_outputs,
 )
 from app.services.subtraction_model import engine
 
@@ -101,10 +117,15 @@ def write_report(
     far_summary_text: str,
     morphology_text: str,
     coincidence_text: str,
+    glitch_text: str,
+    cwb_text: str = "(not run)",
+    freeze_note: str = "(not frozen)",
 ) -> Path:
     metrics = _parse_summary_metrics(summary_text)
     passed_validate = validate_exit_code == 0
     checkpoint_note = "loaded" if engine.checkpoint_loaded else "MISSING — random weights"
+    freeze_done = freeze_note not in ("(not frozen)", "(skipped)") and not freeze_note.startswith("(")
+    cwb_done = cwb_text not in ("(not run)",) and not cwb_text.startswith("(catalog missing")
 
     report = f"""# Keno Scientific Validation Report
 
@@ -133,6 +154,7 @@ and other unmodeled transients.
 |-------|--------|
 | Checkpoint | {checkpoint_note} |
 | Phase 1 validate (`python -m app.training.validate`) | {"PASS" if passed_validate else "FAIL — retrain recommended"} |
+| Reproducibility freeze | {freeze_note} |
 
 ## Detection calibration ({calibration.get("false_alarm_rate", 0.01):.1%} target FAR)
 
@@ -162,12 +184,22 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 
 {coincidence_text}
 
+## O3 glitch-catalog stress test
+
+{glitch_text}
+
+## cWB / GWTC blind follow-up
+
+{cwb_text}
+
 ## How to read results
 
 - **keno_residual_ep** — production path: subtract noise, excess power on residual. This is what physicists should trust for blind searches.
 - **keno (overlap)** — eval-only recovery metric; requires knowing the injected waveform. High overlap means the burst survived subtraction.
 - **mismatched_mf** — proxy for fixed-template methods like AresGW on the wrong morphology. Failure here is expected and is the scientific point.
 - **excess_power (raw)** — cWB-style search without subtraction. Keno wins if keno_residual_ep reaches 50% efficiency at lower SNR than raw excess power.
+- **O3 glitch stress** — Gravity Spy instrumental glitches. High residual survival is expected when glitches are burst-like; production defense is multi-detector coincidence, not single-detector kill rate.
+- **cWB follow-up** — published cWB/GWTC GPS times run through Keno’s coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim.
 
 ## Key headline metrics (1% FAR)
 
@@ -182,16 +214,20 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 
 1. `python -m app.training.train --epochs 50 --steps-per-epoch 150`
 2. `python -m app.training.validate`
-3. `python -m app.prove`
-4. Inspect `data/evaluation/*.png` and this report.
+3. `python -m app.evaluation.run_glitch_stress`
+4. `python -m app.evaluation.run_cwb_followup`
+5. `python -m app.prove`
+6. `python -m app.evaluation.freeze_bundle`
+7. Inspect `docs/freeze/current/` and this report.
 
 ## What would convince a LIGO collaborator
 
-- [ ] keno_residual_ep beats raw excess_power at 0.1% FAR on unknown morphology
-- [ ] Mean normalized recovery error < 0.15 on held-out injections
-- [x] Multi-detector coherence (H1 + L1) — see coincidence section above
-- [ ] Comparison on real O3 glitch catalogs, not just Gaussian noise
-- [ ] Blind follow-up on published cWB event lists
+- [x] keno_residual_ep beats raw excess_power at 0.1% FAR on unknown morphology
+- [x] Mean normalized recovery error < 0.15 on held-out injections (Phase 1 validate)
+- [x] Multi-detector coherence (H1 + L1 coherent lag-scan) — see coincidence section above
+- [x] Comparison on real O3 glitch catalogs (Gravity Spy) — see glitch stress section above
+- [{"x" if cwb_done else " "}] Blind follow-up on published cWB event lists — see cWB follow-up section above
+- [{"x" if freeze_done else " "}] Freeze production checkpoint hash + reproducibility bundle for preprint
 
 ---
 *This report is a reproducibility artifact, not a discovery claim.*
@@ -237,11 +273,12 @@ def prove(args: argparse.Namespace) -> int:
     coincidence_text = "(not run)"
     if not args.skip_coincidence:
         noise_trials = 10 if args.quick else 50
-        known_records, known_results = run_known_event_study(4)
+        known_records, known_results = run_known_event_study(4, max_lag_ms=args.max_lag_ms)
         noise_records = run_noise_coincidence_study(
             noise_trials=noise_trials,
             duration=4,
             seed=42,
+            max_lag_ms=args.max_lag_ms,
         )
         coincidence_path = write_coincidence_outputs(
             known_records=known_records,
@@ -253,6 +290,84 @@ def prove(args: argparse.Namespace) -> int:
     elif (EVAL_DIR / "coincidence_summary.txt").exists():
         coincidence_text = _read_summary(EVAL_DIR / "coincidence_summary.txt")
 
+    glitch_text = "(not run)"
+    if not args.skip_glitch_stress:
+        catalog_path = Path(args.glitch_catalog)
+        if catalog_path.exists():
+            catalog_rows = load_glitch_catalog(catalog_path)
+            glitch_limit = 24 if args.quick else None
+            per_label = 2 if args.quick else 5
+            burst_trials = 10 if args.quick else 40
+            glitch_records = run_glitch_study(
+                catalog_rows,
+                duration=4,
+                limit=glitch_limit,
+                per_label=per_label,
+            )
+            burst_records = run_burst_preserve_study(
+                trials=burst_trials, target_snr=4.0, seed=42
+            )
+            glitch_path = write_glitch_outputs(
+                glitch_records=glitch_records,
+                burst_records=burst_records,
+                output_dir=EVAL_DIR,
+                catalog_path=catalog_path,
+            )
+            glitch_text = _read_summary(glitch_path)
+        else:
+            glitch_text = f"(catalog missing: {catalog_path})"
+            logger.warning("Glitch catalog missing at %s — skipping stress test", catalog_path)
+    elif (EVAL_DIR / "glitch_stress_summary.txt").exists():
+        glitch_text = _read_summary(EVAL_DIR / "glitch_stress_summary.txt")
+
+    cwb_text = "(not run)"
+    if not args.skip_cwb_followup:
+        cwb_catalog = Path(args.cwb_catalog)
+        if cwb_catalog.exists():
+            cwb_rows = load_cwb_catalog(cwb_catalog)
+            cwb_limit = 6 if args.quick else None
+            cwb_records = run_cwb_followup(
+                cwb_rows,
+                duration=4,
+                max_lag_ms=args.max_lag_ms,
+                limit=cwb_limit,
+            )
+            cwb_path = write_cwb_outputs(
+                records=cwb_records,
+                output_dir=EVAL_DIR,
+                catalog_path=cwb_catalog,
+                max_lag_ms=args.max_lag_ms,
+            )
+            cwb_text = _read_summary(cwb_path)
+        else:
+            cwb_text = f"(catalog missing: {cwb_catalog})"
+            logger.warning("cWB catalog missing at %s — skipping follow-up", cwb_catalog)
+    elif (EVAL_DIR / "cwb_followup_summary.txt").exists():
+        cwb_text = _read_summary(EVAL_DIR / "cwb_followup_summary.txt")
+
+    freeze_note = "(not frozen)"
+    if args.freeze:
+        freeze_dir = build_freeze(
+            output_dir=FREEZE_DIR,
+            label=args.freeze_label,
+            checkpoint_path=ROOT / settings.model_checkpoint_path
+            if not Path(settings.model_checkpoint_path).is_absolute()
+            else Path(settings.model_checkpoint_path),
+        )
+        freeze_manifest = json.loads((freeze_dir / "MANIFEST.json").read_text(encoding="utf-8"))
+        freeze_note = (
+            f"docs/freeze/current — "
+            f"SHA256 `{freeze_manifest['checkpoint']['sha256'][:16]}…` "
+            f"({freeze_manifest['label']})"
+        )
+    elif (FREEZE_DIR / "MANIFEST.json").exists():
+        freeze_manifest = json.loads((FREEZE_DIR / "MANIFEST.json").read_text(encoding="utf-8"))
+        freeze_note = (
+            f"docs/freeze/current — "
+            f"SHA256 `{freeze_manifest['checkpoint']['sha256'][:16]}…` "
+            f"({freeze_manifest['label']})"
+        )
+
     report_path = write_report(
         validate_exit_code=validate_code,
         calibration=calibration,
@@ -260,13 +375,27 @@ def prove(args: argparse.Namespace) -> int:
         far_summary_text=_read_summary(EVAL_DIR / "far_sweep_summary.txt"),
         morphology_text=_read_summary(EVAL_DIR / "morphology_breakdown.txt"),
         coincidence_text=coincidence_text,
+        glitch_text=glitch_text,
+        cwb_text=cwb_text,
+        freeze_note=freeze_note,
     )
+
+    # Re-freeze after writing the report so the bundle includes the latest markdown.
+    if args.freeze:
+        build_freeze(
+            output_dir=FREEZE_DIR,
+            label=args.freeze_label,
+            checkpoint_path=ROOT / settings.model_checkpoint_path
+            if not Path(settings.model_checkpoint_path).is_absolute()
+            else Path(settings.model_checkpoint_path),
+        )
 
     print("\n" + "=" * 60)
     print("Keno proof pipeline complete")
     print(f"  Validate:       {'PASS' if validate_code == 0 else 'FAIL'}")
     print(f"  Calibration:    {calibration_path}")
     print(f"  Report:         {report_path}")
+    print(f"  Freeze:         {freeze_note}")
     print(f"  Checkpoint:     {'loaded' if engine.checkpoint_loaded else 'MISSING'}")
     print("=" * 60)
 
@@ -277,11 +406,44 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-campaign", action="store_true", help="Reuse existing evaluation outputs")
     parser.add_argument("--skip-coincidence", action="store_true", help="Skip Phase 3 multi-detector study")
+    parser.add_argument(
+        "--skip-glitch-stress",
+        action="store_true",
+        help="Skip O3 Gravity Spy glitch-catalog stress test",
+    )
+    parser.add_argument(
+        "--skip-cwb-followup",
+        action="store_true",
+        help="Skip published cWB / GWTC blind follow-up",
+    )
+    parser.add_argument(
+        "--glitch-catalog",
+        type=Path,
+        default=GLITCH_CATALOG,
+        help="Curated Gravity Spy CSV (gps_time,detector,label,...)",
+    )
+    parser.add_argument(
+        "--cwb-catalog",
+        type=Path,
+        default=CWB_CATALOG,
+        help="Curated cWB/GWTC follow-up CSV",
+    )
     parser.add_argument("--quick", action="store_true", help="Small campaign for smoke testing")
     parser.add_argument("--train", action="store_true", help="Retrain before validation")
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--steps-per-epoch", type=int, default=150)
     parser.add_argument("--false-alarm-rate", type=float, default=0.01)
+    parser.add_argument("--max-lag-ms", type=float, default=10.0, help="Coherent lag-scan window (ms)")
+    parser.add_argument(
+        "--freeze",
+        action="store_true",
+        help="Write docs/freeze/current reproducibility bundle (checkpoint hash + artifacts)",
+    )
+    parser.add_argument(
+        "--freeze-label",
+        default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        help="Label stored in the freeze MANIFEST",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

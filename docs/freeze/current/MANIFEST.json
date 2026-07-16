@@ -1,0 +1,155 @@
+{
+  "label": "2026-07-16-portfolio",
+  "frozen_at_utc": "2026-07-16T13:33:54Z",
+  "hypothesis": "S_clean = S_raw - N_predicted; template-free excess power on residual",
+  "checkpoint": {
+    "path": "checkpoints/unet_denoiser.pt",
+    "sha256": "55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a",
+    "loaded_at_freeze": true
+  },
+  "environment": {
+    "platform": "Windows-10-10.0.26200-SP0",
+    "packages": {
+      "python": "3.11.9",
+      "torch": "2.6.0+cu124",
+      "numpy": "2.4.6",
+      "gwpy": "4.0.1",
+      "scipy": "1.17.1",
+      "fastapi": "0.139.0"
+    }
+  },
+  "reproduce": [
+    "cd ml-engine && source .venv/bin/activate  # Windows: .venv\\Scripts\\activate",
+    "python -m app.training.validate",
+    "python -m app.evaluation.run_coincidence --noise-trials 50 --max-lag-ms 10",
+    "python -m app.evaluation.run_glitch_stress --per-label 5",
+    "python -m app.prove --skip-campaign",
+    "python -m app.evaluation.freeze_bundle"
+  ],
+  "artifacts": {
+    "checkpoint": {
+      "path": "checkpoints/unet_denoiser.pt",
+      "sha256": "55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a",
+      "bytes": 1994074,
+      "copied": false,
+      "note": "gitignored; verify locally with sha256sum / Get-FileHash"
+    },
+    "calibration.json": {
+      "path": "data/evaluation/calibration.json",
+      "sha256": "b0564dadc3cd49a8b22a384258a765c9142b50ff743daad9f1580cc7a33d226b",
+      "bytes": 596,
+      "copied": true,
+      "freeze_path": "calibration.json"
+    },
+    "summary.txt": {
+      "path": "data/evaluation/summary.txt",
+      "sha256": "4977e845d3a0f5a5ea8b552e0541218ef39a9c87bc1d0601363a51bdb7b9f28d",
+      "bytes": 1308,
+      "copied": true,
+      "freeze_path": "summary.txt"
+    },
+    "far_sweep_summary.txt": {
+      "path": "data/evaluation/far_sweep_summary.txt",
+      "sha256": "83e3be48eeb81dd6fd767a6d6c68aa490d3437af0ce36ddcd1235898a8d58b02",
+      "bytes": 1847,
+      "copied": true,
+      "freeze_path": "far_sweep_summary.txt"
+    },
+    "morphology_breakdown.txt": {
+      "path": "data/evaluation/morphology_breakdown.txt",
+      "sha256": "29f6d824265dee5b53bbe87fee98fa8688aaad0b0072355fdbc4e35c52a4fb76",
+      "bytes": 243,
+      "copied": true,
+      "freeze_path": "morphology_breakdown.txt"
+    },
+    "coincidence_summary.txt": {
+      "path": "data/evaluation/coincidence_summary.txt",
+      "sha256": "1fc1831f5b53b14f78001626f955fa4d8ff7e349742ef4e0a45de73fd9587c67",
+      "bytes": 1280,
+      "copied": true,
+      "freeze_path": "coincidence_summary.txt"
+    },
+    "coincidence_known_events.csv": {
+      "path": "data/evaluation/coincidence_known_events.csv",
+      "sha256": "8362a14c7650ca8230c23b2370fa0547708446f30822720aed8b3c9d6b9dce46",
+      "bytes": 645,
+      "copied": true,
+      "freeze_path": "coincidence_known_events.csv"
+    },
+    "glitch_stress_summary.txt": {
+      "path": "data/evaluation/glitch_stress_summary.txt",
+      "sha256": "3ce9d1179cd4226d4275190c2462af3a1d632f2c01fe936b1ac1aaef1a99c127",
+      "bytes": 1386,
+      "copied": true,
+      "freeze_path": "glitch_stress_summary.txt"
+    },
+    "glitch_stress_trials.csv": {
+      "path": "data/evaluation/glitch_stress_trials.csv",
+      "sha256": "3cecfa5e4d0b026d47d1f6decd91904db5ff012b8e6dae6391ff3c807174e10a",
+      "bytes": 2982,
+      "copied": true,
+      "freeze_path": "glitch_stress_trials.csv"
+    },
+    "glitch_stress_burst_controls.csv": {
+      "path": "data/evaluation/glitch_stress_burst_controls.csv",
+      "sha256": "6d1fc16f19c05347f879f157d75026bffe88c86a9a4e2597300d042d369fc6f2",
+      "bytes": 3111,
+      "copied": true,
+      "freeze_path": "glitch_stress_burst_controls.csv"
+    },
+    "efficiency_vs_snr_unknown.png": {
+      "path": "data/evaluation/efficiency_vs_snr_unknown.png",
+      "sha256": "f9c1a02fe9721d392f1969594816aebe694aac7c174fc5334b2f07a909718765",
+      "bytes": 88406,
+      "copied": true,
+      "freeze_path": "figures/efficiency_vs_snr_unknown.png"
+    },
+    "efficiency_vs_snr_by_far.png": {
+      "path": "data/evaluation/efficiency_vs_snr_by_far.png",
+      "sha256": "1a06239df80c9b6762d12d63e7f8f5b16d853a9e74d73c7616f3706728ae858b",
+      "bytes": 115558,
+      "copied": true,
+      "freeze_path": "figures/efficiency_vs_snr_by_far.png"
+    },
+    "morphology_breakdown.png": {
+      "path": "data/evaluation/morphology_breakdown.png",
+      "sha256": "763f13deaeea38f946c385c24d21808ca86717e287094c84e79c43910eb2f963",
+      "bytes": 57378,
+      "copied": true,
+      "freeze_path": "figures/morphology_breakdown.png"
+    },
+    "campaign_results.csv": {
+      "path": "data/evaluation/campaign_results.csv",
+      "sha256": "0ded34deef5f302c7f35afa544371591a97a5e159326a114c93b8f0b6823e5ad",
+      "bytes": 1491350,
+      "copied": false
+    },
+    "far_sweep_results.csv": {
+      "path": "data/evaluation/far_sweep_results.csv",
+      "sha256": "846310e078e377be8bab15a42dd1fcd7f7357b3fc699bb39ce91af662ad8ed08",
+      "bytes": 4472557,
+      "copied": false
+    },
+    "coincidence_noise_trials.csv": {
+      "path": "data/evaluation/coincidence_noise_trials.csv",
+      "sha256": "2c836306ba7013a121f583a451c548c9901f42376b70eb0ea1d1bc5bf48297d4",
+      "bytes": 5621,
+      "copied": false
+    },
+    "catalogs/o3_glitch_subset.csv": {
+      "path": "ml-engine/catalogs/o3_glitch_subset.csv",
+      "sha256": "1f78f6d9411f18bd9aac3a3db51244669a0af9c471f8542618bb026fa40d9b2c",
+      "bytes": 5514,
+      "copied": true,
+      "freeze_path": "o3_glitch_subset.csv"
+    },
+    "docs/SCIENTIFIC_VALIDATION.md": {
+      "path": "docs/SCIENTIFIC_VALIDATION.md",
+      "sha256": "2cb7028c52befa8eca58a30d934df2474957453b48d3b85d7bea3c09decf228b",
+      "bytes": 9681,
+      "copied": true,
+      "freeze_path": "SCIENTIFIC_VALIDATION.md"
+    }
+  },
+  "missing": []
+}

@@ -1,0 +1,6 @@
+Keno morphology breakdown (detection efficiency @ SNR 2.0)
+
+unknown: 100.0% [97.5%, 100.0%] (n=150)
+sine_gaussian: 100.0% [97.5%, 100.0%] (n=150)
+ringdown: 100.0% [97.5%, 100.0%] (n=150)
+white_noise_burst: 100.0% [97.5%, 100.0%] (n=150)

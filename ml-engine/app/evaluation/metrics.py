@@ -60,6 +60,37 @@ def excess_power_peak(
     return float(np.max(power) / noise_floor)
 
 
+def envelope_peak_time_seconds(
+    data: np.ndarray,
+    sample_rate: float = 4096.0,
+    *,
+    smooth_ms: float = 8.0,
+    edge_guard_ms: float = 64.0,
+) -> float:
+    """Sample-resolution peak time of a short smoothed energy envelope.
+
+    Used for multi-detector timing vetoes. STFT frame hops (~15 ms) are too
+    coarse for a ±10 ms Hanford–Livingston light-travel window. Edge samples
+    are ignored so subtraction boundary artifacts cannot dominate the peak.
+    """
+    if data.size == 0:
+        return 0.0
+    energy = np.asarray(data, dtype=np.float64) ** 2
+    win = max(1, int(round(smooth_ms * 1e-3 * sample_rate)))
+    if win > 1:
+        kernel = np.ones(win, dtype=np.float64) / win
+        energy = np.convolve(energy, kernel, mode="same")
+
+    guard = int(round(edge_guard_ms * 1e-3 * sample_rate))
+    if guard > 0 and 2 * guard < energy.size:
+        searchable = energy.copy()
+        searchable[:guard] = 0.0
+        searchable[-guard:] = 0.0
+        return float(np.argmax(searchable) / sample_rate)
+
+    return float(np.argmax(energy) / sample_rate)
+
+
 def matched_filter_peak(data: np.ndarray, template: np.ndarray) -> float:
     """Peak normalized matched-filter statistic (whitened-domain proxy).
 

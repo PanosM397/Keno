@@ -1,0 +1,22 @@
+event_id,gps_time,detectors,cohort,source,note
+GW150914,1126259462.4,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O1 first BBH — cWB discovery path
+GW151226,1135136350.6,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O1 BBH
+GW170104,1167559936.6,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 BBH
+GW170608,1180922494.5,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 BBH
+GW170729,1185389807.3,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 heavy BBH — strong cWB
+GW170809,1186302519.8,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 BBH
+GW170814,1186741861.5,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 three-detector BBH
+GW170817,1187008882.4,"H1,L1",gwtc_cwb,GWOSC+cWB docs,BNS — L1 glitch; cWB often misses
+GW170818,1187058327.1,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 BBH
+GW170823,1187529256.5,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O2 BBH
+GW190412,1239082262.1,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3a unequal-mass BBH
+GW190521,1242442967.4,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3a IMBH-like — cWB hallmark
+GW190521_074359,1242459857.4,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3a loud BBH
+GW190706_222641,1246487219.3,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3a heavy BBH
+GW190814,1249852257.0,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3a NSBH/BBH
+GW191109_010717,1257296855.2,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3b BBH
+GW200224_222234,1266618172.4,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3b BBH
+GW200225_060421,1266645879.3,"H1,L1",gwtc_cwb,GWOSC+cWB docs,O3b BBH
+cWB_190607,1243931925.9,"H1,L1",cwb_only,arXiv:2410.15191,cWB-only candidate IFAR 11.7 yr
+cWB_190711,1246849694.6,"H1,L1",cwb_only,arXiv:2410.15191,cWB-only candidate IFAR 40.7 yr
+cWB_200318,1268594035.1,"H1,L1",cwb_only,arXiv:2410.15191,cWB-only candidate IFAR 4.5 yr

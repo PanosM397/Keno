@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.api.schemas import (
+    CoherentLagScanResponse,
     CoincidenceRequest,
     CoincidenceResponse,
     DetectRequest,
@@ -16,6 +17,17 @@ router = APIRouter()
 
 
 def _to_coincidence_response(result) -> CoincidenceResponse:
+    coherent = None
+    if result.coherent is not None:
+        coherent = CoherentLagScanResponse(
+            coherent_excess_power=result.coherent.coherent_excess_power,
+            best_lag_ms=result.coherent.best_lag_ms,
+            best_polarity=result.coherent.best_polarity,
+            peak_dt_ms=result.coherent.peak_dt_ms,
+            timing_ok=result.coherent.timing_ok,
+            coherent_detected=result.coherent.coherent_detected,
+            max_lag_ms=result.coherent.max_lag_ms,
+        )
     return CoincidenceResponse(
         gps_time=result.gps_time,
         duration=result.duration,
@@ -32,7 +44,9 @@ def _to_coincidence_response(result) -> CoincidenceResponse:
             for det in result.detectors
         ],
         raw_coincident=result.raw_coincident,
+        independent_residual_coincident=result.independent_residual_coincident,
         residual_coincident=result.residual_coincident,
+        coherent=coherent,
         false_alarm_rate=result.false_alarm_rate,
         calibration_note=result.calibration_note,
         checkpoint_loaded=result.checkpoint_loaded,
@@ -71,7 +85,7 @@ def detect(request: DetectRequest) -> DetectResponse:
 
 @router.post("/detect/coincidence", response_model=CoincidenceResponse)
 def detect_coincidence(request: CoincidenceRequest) -> CoincidenceResponse:
-    """Run template-free excess-power search on multiple detectors at the same GPS time."""
+    """Run template-free excess-power search with coherent ±lag scan for dual detectors."""
     if not request.detectors:
         raise HTTPException(status_code=400, detail="At least one detector is required")
 
@@ -79,6 +93,7 @@ def detect_coincidence(request: CoincidenceRequest) -> CoincidenceResponse:
         request.gps_time,
         tuple(request.detectors),
         request.duration,
+        max_lag_ms=request.max_lag_ms,
     )
     if not result.available_detectors:
         raise HTTPException(

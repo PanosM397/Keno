@@ -430,8 +430,22 @@ export class DiffViewerComponent implements OnDestroy {
       return 'Multi-detector search unavailable for this GPS time.';
     }
 
+    const coherent = coincidence.coherent;
+    if (coincidence.residualCoincident && coherent) {
+      const lag = coherent.bestLagMs >= 0 ? `+${coherent.bestLagMs.toFixed(1)}` : coherent.bestLagMs.toFixed(1);
+      return (
+        `Production coherent residual coincidence — EP ${this.formatExcessPower(coherent.coherentExcessPower)}, ` +
+        `lag ${lag} ms, peak dt ${coherent.peakDtMs.toFixed(1)} ms.`
+      );
+    }
     if (coincidence.residualCoincident) {
-      return `H1+L1 residual coincidence at GPS ${coincidence.gpsTime} — both observatories trigger on subtracted strain.`;
+      return `Residual coincidence at GPS ${coincidence.gpsTime}.`;
+    }
+    if (coherent && !coherent.timingOk) {
+      return (
+        `Coherent EP ${this.formatExcessPower(coherent.coherentExcessPower)} but timing veto ` +
+        `(peak dt ${coherent.peakDtMs.toFixed(1)} ms > ±${coherent.maxLagMs} ms).`
+      );
     }
     if (coincidence.rawCoincident) {
       return 'Raw excess-power coincidence in both detectors, but not on residuals after subtraction.';

@@ -55,7 +55,17 @@ interface CoincidenceResponse {
     error?: string;
   }>;
   raw_coincident: boolean;
+  independent_residual_coincident: boolean;
   residual_coincident: boolean;
+  coherent?: {
+    coherent_excess_power: number;
+    best_lag_ms: number;
+    best_polarity: number;
+    peak_dt_ms: number;
+    timing_ok: boolean;
+    coherent_detected: boolean;
+    max_lag_ms: number;
+  } | null;
   false_alarm_rate: number;
   calibration_note: string;
   checkpoint_loaded: boolean;
@@ -111,6 +121,18 @@ export class StrainApiService {
   }
 
   private toCoincidenceResult(response: CoincidenceResponse): CoincidenceResult {
+    const coherent = response.coherent
+      ? {
+          coherentExcessPower: response.coherent.coherent_excess_power,
+          bestLagMs: response.coherent.best_lag_ms,
+          bestPolarity: response.coherent.best_polarity,
+          peakDtMs: response.coherent.peak_dt_ms,
+          timingOk: response.coherent.timing_ok,
+          coherentDetected: response.coherent.coherent_detected,
+          maxLagMs: response.coherent.max_lag_ms,
+        }
+      : null;
+
     return {
       gpsTime: response.gps_time,
       duration: response.duration,
@@ -124,7 +146,9 @@ export class StrainApiService {
         error: detector.error,
       })),
       rawCoincident: response.raw_coincident,
+      independentResidualCoincident: response.independent_residual_coincident,
       residualCoincident: response.residual_coincident,
+      coherent,
       falseAlarmRate: response.false_alarm_rate,
       calibrationNote: response.calibration_note,
       checkpointLoaded: response.checkpoint_loaded,

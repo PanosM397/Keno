@@ -31,15 +31,22 @@ The server starts on `http://localhost:8000` by default. Interactive API docs ar
 | GET    | `/health`         | Service + model health                                                       |
 | POST   | `/api/v1/denoise` | Body: `gps_time`, `detector`, `duration`. Fetches strain via GWOSC, runs the model, returns `raw_strain`, `predicted_noise`, `residual` |
 | POST   | `/api/v1/detect`  | Same fetch + subtraction, plus template-free excess-power on raw vs residual with calibrated detection flags |
+| POST   | `/api/v1/detect/coincidence` | H1+L1 coherent ±10 ms lag-scan on residuals with polarity search and timing veto |
 
 ## Scientific proof pipeline
 
 ```bash
-python -m app.prove                  # validate + campaign + report
+python -m app.prove                  # validate + campaign + coincidence + glitch stress + report
 python -m app.prove --skip-campaign  # reuse existing evaluation CSVs
+python -m app.evaluation.run_glitch_stress   # O3 Gravity Spy stress test only
+python -m app.evaluation.run_cwb_followup    # published cWB / GWTC GPS follow-up
+python -m app.evaluation.freeze_bundle       # pin checkpoint hash + audit artifacts
+python -m app.prove --skip-campaign --freeze # refresh report + freeze bundle
 ```
 
 See [`docs/SCIENTIFIC_VALIDATION.md`](../docs/SCIENTIFIC_VALIDATION.md) for methodology.
+Freeze pin: [`docs/freeze/current/`](../docs/freeze/current/).
+Catalog: [`catalogs/o3_glitch_subset.csv`](catalogs/o3_glitch_subset.csv).
 
 ## GWOSC Data Fetcher
 

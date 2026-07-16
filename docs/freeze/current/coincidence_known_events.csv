@@ -1,0 +1,4 @@
+event_id,gps_time,detectors,raw_coincident,independent_residual_coincident,residual_coincident,note,coherent_ep,best_lag_ms,best_polarity,peak_dt_ms,timing_ok,h1_raw_detected,h1_residual_detected,h1_available,l1_raw_detected,l1_residual_detected,l1_available
+GW150914,1126259462.4,"H1,L1",False,False,True,,192881.96284247466,7.8125,-1,-7.568359375,True,False,True,True,False,False,True
+GW170817,1187008882.4,"H1,L1",False,False,False,,381638150.4877458,7.32421875,1,233.154296875,False,False,False,True,True,True,True
+GW190425,1240215503.0,L1,False,False,False,H1 was offline — single-detector sanity check only.,,,,,,,,,False,False,True

@@ -70,6 +70,22 @@ class CoincidenceRequest(BaseModel):
     gps_time: float = Field(..., description="Central GPS timestamp shared by all detectors")
     detectors: list[str] = Field(default=["H1", "L1"], min_length=1, description="Detector codes")
     duration: int = Field(default=4, ge=1, le=32, description="Segment duration in seconds")
+    max_lag_ms: float = Field(
+        default=10.0,
+        ge=0.0,
+        le=100.0,
+        description="Max coherent lag scan / timing veto window in milliseconds",
+    )
+
+
+class CoherentLagScanResponse(BaseModel):
+    coherent_excess_power: float
+    best_lag_ms: float
+    best_polarity: int
+    peak_dt_ms: float
+    timing_ok: bool
+    coherent_detected: bool
+    max_lag_ms: float
 
 
 class CoincidenceResponse(BaseModel):
@@ -77,7 +93,9 @@ class CoincidenceResponse(BaseModel):
     duration: int
     detectors: list[DetectorCoincidenceResponse]
     raw_coincident: bool
+    independent_residual_coincident: bool
     residual_coincident: bool
+    coherent: CoherentLagScanResponse | None = None
     false_alarm_rate: float
     calibration_note: str
     checkpoint_loaded: bool

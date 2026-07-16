@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-07-16T13:33:32.818814+00:00",
+  "false_alarm_rate": 0.01,
+  "noise_trials": 300,
+  "morphology": "unknown",
+  "window_seconds": 4.0,
+  "checkpoint_loaded": true,
+  "excess_power_raw": 482.6950993715818,
+  "excess_power_residual": 2309.97938528557,
+  "mismatched_mf": 4.336830035372703,
+  "keno_noise_rms_ratio": 0.055190671435840215,
+  "residual_ep_artifact_trim_fraction": 0.01,
+  "calibration_note": "Noise-only GWOSC background at 1.0% target FAR. Residual excess-power threshold trims the upper 1% of subtraction-glitched trials before calibration."
+}

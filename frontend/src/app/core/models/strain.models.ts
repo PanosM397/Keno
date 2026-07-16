@@ -52,12 +52,24 @@ export interface CoincidenceDetectorResult {
   error?: string;
 }
 
+export interface CoherentLagScan {
+  coherentExcessPower: number;
+  bestLagMs: number;
+  bestPolarity: number;
+  peakDtMs: number;
+  timingOk: boolean;
+  coherentDetected: boolean;
+  maxLagMs: number;
+}
+
 export interface CoincidenceResult {
   gpsTime: number;
   duration: number;
   detectors: CoincidenceDetectorResult[];
   rawCoincident: boolean;
+  independentResidualCoincident: boolean;
   residualCoincident: boolean;
+  coherent: CoherentLagScan | null;
   falseAlarmRate: number;
   calibrationNote: string;
   checkpointLoaded: boolean;

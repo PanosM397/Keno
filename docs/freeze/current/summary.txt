@@ -1,0 +1,43 @@
+Keno evaluation campaign summary
+Morphology: unknown
+Calibrated false-alarm rate: 1.0%
+SNR grid: 2.0 – 12.0 (step 1.0)
+Trials per SNR (per seed): 50
+False-alarm trials (per seed): 300
+Seeds: 42, 43, 44
+Efficiency CI: Wilson 95%
+
+Thresholds (last seed calibration):
+  mismatched_mf:  4.2181
+  excess_power:   115.9449
+  keno_residual_ep: 2419.6685  (excess power on residual)
+  keno (noise):   0.0205  (residual RMS ratio)
+  keno (signal):  0.7500  (waveform overlap, eval-only)
+
+[oracle_mf]
+  SNR @ 50% efficiency: 2.00
+  False-alarm rate: n/a (injected trials only)
+
+[mismatched_mf]
+  SNR @ 50% efficiency: not reached
+  False-alarm rate: 1.0% (9/900)
+
+[excess_power]
+  SNR @ 50% efficiency: 2.00
+  False-alarm rate: 1.0% (9/900)
+
+[keno_residual_ep]
+  SNR @ 50% efficiency: 2.00
+  False-alarm rate: 1.0% (9/900)
+
+[keno]
+  SNR @ 50% efficiency: 2.00
+  False-alarm rate: 1.0% (9/900)
+  Mean peak recovery error: 2.3016 (max |residual − signal|; can be large despite high overlap)
+  Mean normalized recovery error: 0.0223 (RMS error / RMS signal)
+  Mean signal overlap: 0.9996
+  Per burst-type efficiency @ SNR 2.0:
+    ringdown: 100.0% [92.0%, 100.0%] (n=44)
+    sine_gaussian: 100.0% [93.6%, 100.0%] (n=56)
+    white_noise_burst: 100.0% [92.9%, 100.0%] (n=50)
+

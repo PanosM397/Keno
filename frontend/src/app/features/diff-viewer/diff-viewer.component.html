@@ -275,12 +275,22 @@
               }
             </tbody>
           </table>
+          @if (coincidenceResult.coherent; as coherent) {
+            <p class="coincidence-footer mono">
+              Coherent EP {{ formatExcessPower(coherent.coherentExcessPower) }}
+              · lag {{ coherent.bestLagMs >= 0 ? '+' : '' }}{{ coherent.bestLagMs.toFixed(1) }} ms
+              · peak dt {{ coherent.peakDtMs.toFixed(1) }} ms
+              · timing {{ coherent.timingOk ? 'ok' : 'veto' }}
+            </p>
+          }
           <p class="coincidence-footer">
-            Residual coincidence:
+            Production residual:
             <strong [class.coincidence-cell--on]="coincidenceResult.residualCoincident">
               {{ coincidenceResult.residualCoincident ? 'Yes' : 'No' }}
             </strong>
-            · Raw coincidence:
+            · Independent:
+            <strong>{{ coincidenceResult.independentResidualCoincident ? 'Yes' : 'No' }}</strong>
+            · Raw:
             <strong>{{ coincidenceResult.rawCoincident ? 'Yes' : 'No' }}</strong>
           </p>
         </details>
