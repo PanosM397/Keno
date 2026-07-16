@@ -1,6 +1,6 @@
 {
   "label": "2026-07-16-portfolio",
-  "frozen_at_utc": "2026-07-16T14:06:48Z",
+  "frozen_at_utc": "2026-07-16T14:07:52Z",
   "hypothesis": "S_clean = S_raw - N_predicted; template-free excess power on residual",
   "checkpoint": {
     "path": "checkpoints/unet_denoiser.pt",
@@ -37,7 +37,7 @@
     },
     "calibration.json": {
       "path": "data/evaluation/calibration.json",
-      "sha256": "58f6929c06391a736d398610a6d57f1caa4d5d8b300d2346075f9a880f5c7187",
+      "sha256": "43c81a1146891d362ce60dd1f8efaa866e16916e83e5a0e1d71771226355f2fc",
       "bytes": 596,
       "copied": true,
       "freeze_path": "calibration.json"
@@ -167,7 +167,7 @@
     },
     "docs/SCIENTIFIC_VALIDATION.md": {
       "path": "docs/SCIENTIFIC_VALIDATION.md",
-      "sha256": "6a8798a1d151298b22b7287f87b765d054f1d1494d8e750c6ca2fc6245e0cbad",
+      "sha256": "2fb14984c86d555522c29a7b9e884b661962f5d57f767942870d87839155e62b",
       "bytes": 13240,
       "copied": true,
       "freeze_path": "SCIENTIFIC_VALIDATION.md"
