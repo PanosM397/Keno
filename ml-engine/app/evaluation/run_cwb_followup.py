@@ -212,7 +212,7 @@ def write_outputs(
     ]
 
     def _ep_above_threshold(rows: list[dict]) -> tuple[str, int, int]:
-        """Coherent EP clears residual threshold (timing veto ignored)."""
+        """Coherent EP clears residual threshold (same as production with lag gate)."""
         cal_threshold = None
         try:
             from app.services.residual_search import load_calibration
@@ -245,7 +245,7 @@ def write_outputs(
             [
                 f"[{cohort}] dual-detector events (n={len(cohort_rows)}):",
                 f"  Production residual coincidence: {prod} ({pn}/{pt})",
-                f"  Coherent EP above threshold (timing ignored): {ep_rate} ({epn}/{ept})",
+                f"  Coherent EP above threshold (lag gate only): {ep_rate} ({epn}/{ept})",
                 f"  Independent residual coincidence: {indep} ({inn}/{intot})",
                 f"  Raw excess-power coincidence:     {raw} ({rn}/{rt})",
                 "",
@@ -275,9 +275,9 @@ def write_outputs(
             "- gwtc_cwb: published GWTC events also reported by cWB documentation.",
             "- cwb_only: O3 candidates reported only by upgraded cWB (arXiv:2410.15191).",
             "- YES means Keno production coherent residual coincidence triggers",
-            "  (coherent EP above threshold AND envelope peak dt within max lag).",
-            "- High coherent EP with timing=False is a near-miss: energy is present but",
-            "  single-detector envelope peaks are not aligned within +/-max-lag-ms.",
+            "  (coherent EP above threshold AND best coherent lag within +/-max-lag-ms).",
+            "- Envelope peak dt is diagnostic only; large envelope mismatch with YES",
+            "  can indicate residual glitch contamination (e.g. GW170817 L1 glitch).",
             "- This is a follow-up consistency check, not an independent discovery claim.",
             "",
         ]

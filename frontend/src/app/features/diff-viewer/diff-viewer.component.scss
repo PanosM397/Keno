@@ -49,6 +49,40 @@
   }
 }
 
+.health-badge {
+  margin-top: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.health-badge--ok {
+  border-color: rgba(43, 255, 194, 0.45);
+  color: var(--color-residual);
+  background: rgba(43, 255, 194, 0.08);
+}
+
+.health-badge--warn {
+  border-color: rgba(232, 176, 88, 0.55);
+  color: #e8b058;
+  background: rgba(232, 176, 88, 0.08);
+}
+
+.health-badge--down {
+  border-color: rgba(255, 90, 90, 0.5);
+  color: var(--color-danger);
+  background: rgba(255, 90, 90, 0.08);
+}
+
+.health-badge--pending {
+  opacity: 0.75;
+}
+
 .event-pills {
   grid-area: pills;
   display: flex;
@@ -284,6 +318,11 @@
 .status--error {
   border-color: var(--color-danger);
   color: var(--color-danger);
+}
+
+.status--warning {
+  border-color: rgba(232, 176, 88, 0.55);
+  color: #e8b058;
 }
 
 .meta {

@@ -4,7 +4,7 @@ async function getHealth(req, res) {
   const mlEngineStatus = await mlEngineService.checkHealth();
   res.json({
     status: 'ok',
-    service: 'gwburst-backend',
+    service: 'keno-backend',
     timestamp: new Date().toISOString(),
     mlEngine: mlEngineStatus,
   });

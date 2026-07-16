@@ -1,9 +1,9 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { Subscription, catchError, forkJoin, of } from 'rxjs';
 
 import { ChartPanelComponent } from './chart-panel/chart-panel.component';
-import { StrainApiService } from '../../core/services/strain-api.service';
+import { BackendHealth, StrainApiService } from '../../core/services/strain-api.service';
 import {
   CoincidenceResult,
   Detector,
@@ -17,7 +17,7 @@ interface LoadingPhase {
   afterSeconds: number;
   message: string;
   hint?: string;
-  stepId: 'backend' | 'gwosc' | 'model';
+  stepId: 'backend' | 'gwosc' | 'model' | 'search';
 }
 
 const LOADING_PHASES: LoadingPhase[] = [
@@ -41,7 +41,7 @@ const LOADING_PHASES: LoadingPhase[] = [
   },
   {
     afterSeconds: 75,
-    stepId: 'model',
+    stepId: 'search',
     message: 'Still working — large downloads take time…',
     hint: 'Repeat runs use the backend cache and usually finish in seconds.',
   },
@@ -71,7 +71,7 @@ const LOADING_STEPS = [
   { id: 'backend' as const, label: 'Backend connected' },
   { id: 'gwosc' as const, label: 'GWOSC strain download' },
   { id: 'model' as const, label: 'AI noise subtraction' },
-  { id: 'model' as const, label: 'Blind excess-power search' },
+  { id: 'search' as const, label: 'Blind excess-power search' },
 ];
 
 interface KnownEvent {
@@ -82,6 +82,7 @@ interface KnownEvent {
   detector: Detector;
 }
 
+/** Curated demo presets (not loaded from GWOSC /events). */
 const KNOWN_EVENTS: KnownEvent[] = [
   {
     id: 'GW150914',
@@ -195,9 +196,10 @@ function summarize(values: number[]): SeriesStats {
   templateUrl: './diff-viewer.component.html',
   styleUrl: './diff-viewer.component.scss',
 })
-export class DiffViewerComponent implements OnDestroy {
+export class DiffViewerComponent implements OnInit, OnDestroy {
   private readonly strainApi = inject(StrainApiService);
   private timerId: ReturnType<typeof setInterval> | null = null;
+  private inFlight: Subscription | null = null;
 
   readonly knownEvents = KNOWN_EVENTS;
 
@@ -211,8 +213,29 @@ export class DiffViewerComponent implements OnDestroy {
   readonly loading = signal(false);
   readonly elapsedSeconds = signal(0);
   readonly error = signal<string | null>(null);
+  readonly coincidenceWarning = signal<string | null>(null);
   readonly result = signal<DenoisedStrainResult | null>(null);
   readonly coincidence = signal<CoincidenceResult | null>(null);
+  readonly engineHealth = signal<BackendHealth | null>(null);
+  readonly engineHealthError = signal<string | null>(null);
+
+  readonly healthBadge = computed(() => {
+    if (this.engineHealthError()) {
+      return { kind: 'down' as const, label: 'Backend unreachable' };
+    }
+    const health = this.engineHealth();
+    if (!health) {
+      return { kind: 'pending' as const, label: 'Checking services…' };
+    }
+    const ml = health.mlEngine;
+    if (!ml || ml.status === 'unreachable') {
+      return { kind: 'warn' as const, label: 'ML engine unreachable' };
+    }
+    if (ml.checkpoint_loaded === false) {
+      return { kind: 'warn' as const, label: 'Checkpoint missing' };
+    }
+    return { kind: 'ok' as const, label: 'ML ready · checkpoint loaded' };
+  });
 
   readonly rawSeries = computed<SeriesPoint[]>(() => this.buildSeries((r) => r.rawStrain));
   readonly noiseSeries = computed<SeriesPoint[]>(() => this.buildSeries((r) => r.predictedNoise));
@@ -435,7 +458,7 @@ export class DiffViewerComponent implements OnDestroy {
       const lag = coherent.bestLagMs >= 0 ? `+${coherent.bestLagMs.toFixed(1)}` : coherent.bestLagMs.toFixed(1);
       return (
         `Production coherent residual coincidence — EP ${this.formatExcessPower(coherent.coherentExcessPower)}, ` +
-        `lag ${lag} ms, peak dt ${coherent.peakDtMs.toFixed(1)} ms.`
+        `lag ${lag} ms (envelope peak dt ${coherent.peakDtMs.toFixed(1)} ms, diagnostic).`
       );
     }
     if (coincidence.residualCoincident) {
@@ -443,8 +466,8 @@ export class DiffViewerComponent implements OnDestroy {
     }
     if (coherent && !coherent.timingOk) {
       return (
-        `Coherent EP ${this.formatExcessPower(coherent.coherentExcessPower)} but timing veto ` +
-        `(peak dt ${coherent.peakDtMs.toFixed(1)} ms > ±${coherent.maxLagMs} ms).`
+        `Coherent EP ${this.formatExcessPower(coherent.coherentExcessPower)} but lag outside ` +
+        `±${coherent.maxLagMs} ms window (best lag ${coherent.bestLagMs.toFixed(1)} ms).`
       );
     }
     if (coincidence.rawCoincident) {
@@ -504,6 +527,7 @@ export class DiffViewerComponent implements OnDestroy {
     this.result.set(null);
     this.coincidence.set(null);
     this.error.set(null);
+    this.coincidenceWarning.set(null);
   }
 
   formatStat(value: number): string {
@@ -556,13 +580,33 @@ export class DiffViewerComponent implements OnDestroy {
     this.fetch();
   }
 
+  ngOnInit(): void {
+    this.refreshHealth();
+  }
+
+  refreshHealth(): void {
+    this.strainApi.getHealth().subscribe({
+      next: (health) => {
+        this.engineHealth.set(health);
+        this.engineHealthError.set(null);
+      },
+      error: () => {
+        this.engineHealth.set(null);
+        this.engineHealthError.set('unreachable');
+      },
+    });
+  }
+
   ngOnDestroy(): void {
+    this.inFlight?.unsubscribe();
     this.stopTimer();
   }
 
   fetch(): void {
+    this.inFlight?.unsubscribe();
     this.loading.set(true);
     this.error.set(null);
+    this.coincidenceWarning.set(null);
     this.coincidence.set(null);
     this.startTimer();
 
@@ -573,7 +617,7 @@ export class DiffViewerComponent implements OnDestroy {
     };
 
     if (this.syntheticMode()) {
-      this.strainApi
+      this.inFlight = this.strainApi
         .getDenoisedStrain({
           ...query,
           synthetic: true,
@@ -592,13 +636,22 @@ export class DiffViewerComponent implements OnDestroy {
       return;
     }
 
-    forkJoin({
+    this.inFlight = forkJoin({
       strain: this.strainApi.getStrainDetection(query),
-      coincidence: this.strainApi.getStrainCoincidence({
-        gpsTime: query.gpsTime,
-        duration: query.duration,
-        detectors: ['H1', 'L1'],
-      }),
+      coincidence: this.strainApi
+        .getStrainCoincidence({
+          gpsTime: query.gpsTime,
+          duration: query.duration,
+          detectors: ['H1', 'L1'],
+        })
+        .pipe(
+          catchError((err) => {
+            this.coincidenceWarning.set(
+              `H1+L1 coincidence unavailable — ${this.toFriendlyError(err)}`,
+            );
+            return of(null);
+          }),
+        ),
     }).subscribe({
       next: ({ strain, coincidence }) => {
         this.result.set(strain);
@@ -623,6 +676,7 @@ export class DiffViewerComponent implements OnDestroy {
   private finishLoading(): void {
     this.loading.set(false);
     this.stopTimer();
+    this.refreshHealth();
   }
 
   private stopTimer(): void {
@@ -642,14 +696,23 @@ export class DiffViewerComponent implements OnDestroy {
     const message = err?.error?.error ?? '';
     const details = err?.error?.details ?? '';
 
-    if (message.includes('ML inference engine') && details.includes('timeout')) {
+    if (message.includes('ML inference engine') && details.toLowerCase().includes('timeout')) {
       return 'The analysis took too long. The servers may be downloading data — try again in a moment.';
     }
     if (details.includes('offline') || details.includes('no valid data')) {
       return 'That observatory had no data for this moment. Try another observatory or pick a preset event.';
     }
+    if (details && message.includes('ML inference engine')) {
+      return details;
+    }
+    if (message && details && details !== message) {
+      return `${message}: ${details}`;
+    }
     if (message) {
       return message;
+    }
+    if (details) {
+      return details;
     }
     return 'Could not reach the backend. Make sure the backend and ML engine are running.';
   }

@@ -2,7 +2,8 @@
 
 Runs H1+L1 blind residual search on catalog events and noise-only GPS times
 where both detectors have cached background. Production dual-detector path
-uses a coherent ±max_lag_ms lag scan with polarity search and a timing veto.
+uses a coherent ±max_lag_ms lag scan with polarity search; timing is gated on
+best coherent lag (envelope peak Δt is diagnostic only).
 
 Usage:
     python -m app.evaluation.run_coincidence
@@ -52,7 +53,7 @@ def _format_coherent(result: CoincidenceSearchResult) -> list[str]:
         f"EP {coherent.coherent_excess_power:.1f}, "
         f"lag {coherent.best_lag_ms:+.1f} ms, "
         f"polarity {coherent.best_polarity:+d}, "
-        f"peak dt {coherent.peak_dt_ms:+.1f} ms, "
+        f"envelope peak dt {coherent.peak_dt_ms:+.1f} ms (diagnostic), "
         f"timing {'ok' if coherent.timing_ok else 'VETO'}",
         f"  Independent residual coincidence: "
         f"{'yes' if result.independent_residual_coincident else 'no'} | "

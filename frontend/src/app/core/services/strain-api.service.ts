@@ -72,10 +72,26 @@ interface CoincidenceResponse {
   cached?: boolean;
 }
 
+export interface BackendHealth {
+  status: string;
+  service?: string;
+  mlEngine?: {
+    status?: string;
+    device?: string;
+    model_loaded?: boolean;
+    checkpoint_loaded?: boolean;
+    checkpoint_path?: string;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class StrainApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl;
+
+  getHealth(): Observable<BackendHealth> {
+    return this.http.get<BackendHealth>(`${this.baseUrl}/health`);
+  }
 
   getDenoisedStrain(query: DenoiseQuery): Observable<DenoisedStrainResult> {
     let params = new HttpParams()

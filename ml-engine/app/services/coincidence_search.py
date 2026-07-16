@@ -3,7 +3,8 @@
 Production path for dual-detector events:
   1. Subtract predicted noise independently on each detector.
   2. Coherent lag scan: (H1 ± L1_shifted) / √2 over ±max_lag_ms.
-  3. Timing veto: peak residual excess-power times must agree within max_lag.
+  3. Timing gate: best coherent lag must lie within ±max_lag_ms (light-travel
+     window). Independent envelope peak Δt is retained as a diagnostic only.
 """
 
 from __future__ import annotations
@@ -153,13 +154,16 @@ def coherent_lag_scan(
     if peak_time_b_s is None:
         peak_time_b_s = envelope_peak_time_seconds(residual_b, sample_rate)
 
+    best_lag_ms = best_lag * 1e3 / sample_rate
     peak_dt_ms = (peak_time_b_s - peak_time_a_s) * 1e3
-    timing_ok = abs(peak_dt_ms) <= max_lag_ms
+    # Production timing uses coherent lag (already scanned in-window).
+    # Envelope peak Δt remains a diagnostic of single-detector alignment.
+    timing_ok = abs(best_lag_ms) <= max_lag_ms
     coherent_detected = is_detected(best_ep, residual_threshold) and timing_ok
 
     return CoherentLagScanResult(
         coherent_excess_power=float(best_ep),
-        best_lag_ms=best_lag * 1e3 / sample_rate,
+        best_lag_ms=float(best_lag_ms),
         best_polarity=best_polarity,
         peak_dt_ms=float(peak_dt_ms),
         timing_ok=timing_ok,
@@ -269,8 +273,8 @@ def _build_coincidence_result(
             peak_time_a_s=available[0].residual_peak_time_s,
             peak_time_b_s=available[1].residual_peak_time_s,
         )
-        # Production path: coherent lag-scan + timing veto (does not require
-        # each detector to independently clear the single-detector threshold).
+        # Production path: coherent lag-scan + lag-window timing gate (does not
+        # require each detector to independently clear the single-detector threshold).
         residual_coincident = coherent.coherent_detected
     elif len(available) == 1:
         residual_coincident = available[0].residual_detected

@@ -13,6 +13,37 @@ const client = axios.create({
 const DENOISE_TIMEOUT_MS = 300000;
 const HEALTH_TIMEOUT_MS = 5000;
 
+function mlEngineErrorDetail(error) {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
+      .filter(Boolean)
+      .join('; ');
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || JSON.stringify(detail);
+  }
+  if (typeof error?.response?.data?.error === 'string') {
+    return error.response.data.error;
+  }
+  return error?.message || 'Unknown ML engine error';
+}
+
+function throwMlEngineError(context, error) {
+  const detail = mlEngineErrorDetail(error);
+  const status = error?.response?.status;
+  logger.error(`${context} failed`, detail);
+  throw new ApiError(
+    status && status >= 400 && status < 600 ? status : 502,
+    'Failed to reach the ML inference engine',
+    detail,
+  );
+}
+
 async function requestDenoising({
   gpsTime,
   detector = 'H1',
@@ -34,8 +65,7 @@ async function requestDenoising({
     );
     return data;
   } catch (error) {
-    logger.error('ML engine denoising request failed', error.message);
-    throw new ApiError(502, 'Failed to reach the ML inference engine', error.message);
+    throwMlEngineError('ML engine denoising request', error);
   }
 }
 
@@ -62,8 +92,7 @@ async function requestDetection({ gpsTime, detector = 'H1', duration = 4 }) {
     );
     return data;
   } catch (error) {
-    logger.error('ML engine detection request failed', error.message);
-    throw new ApiError(502, 'Failed to reach the ML inference engine', error.message);
+    throwMlEngineError('ML engine detection request', error);
   }
 }
 
@@ -84,8 +113,7 @@ async function requestCoincidenceDetection({
     );
     return data;
   } catch (error) {
-    logger.error('ML engine coincidence request failed', error.message);
-    throw new ApiError(502, 'Failed to reach the ML inference engine', error.message);
+    throwMlEngineError('ML engine coincidence request', error);
   }
 }
 

@@ -3,6 +3,20 @@
     <div class="brand">
       <h1>Keno</h1>
       <p>Compare detector data, AI noise, and what remains.</p>
+      @if (healthBadge(); as badge) {
+        <button
+          type="button"
+          class="health-badge"
+          [class.health-badge--ok]="badge.kind === 'ok'"
+          [class.health-badge--warn]="badge.kind === 'warn'"
+          [class.health-badge--down]="badge.kind === 'down'"
+          [class.health-badge--pending]="badge.kind === 'pending'"
+          (click)="refreshHealth()"
+          title="Click to refresh service health"
+        >
+          {{ badge.label }}
+        </button>
+      }
     </div>
 
     <div class="event-pills">
@@ -73,8 +87,11 @@
           <select [ngModel]="detector()" (ngModelChange)="detector.set($event)">
             <option value="H1">Hanford (H1)</option>
             <option value="L1">Livingston (L1)</option>
-            <option value="V1">Virgo (V1)</option>
+            <option value="V1">Virgo (V1) — single-detector only</option>
           </select>
+          <p class="toggle-hint">
+            Charts use the selected observatory. Coherent coincidence always runs H1+L1 (Virgo is not in the lag-scan yet).
+          </p>
         </div>
         <div class="field">
           <span class="field-label">Time window</span>
@@ -126,6 +143,10 @@
 
       @if (resultSummary()) {
         <div class="meta">{{ resultSummary() }}</div>
+      }
+
+      @if (coincidenceWarning(); as warning) {
+        <div class="status status--warning">{{ warning }}</div>
       }
 
       @if (resultDiagnostics(); as diagnostics) {

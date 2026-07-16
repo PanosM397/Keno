@@ -10,12 +10,14 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent } from 'echarts/components';
+import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
 import { SeriesPoint } from '../../../core/models/strain.models';
 
-echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
+echarts.use([LineChart, GridComponent, TooltipComponent, DataZoomComponent, CanvasRenderer]);
+
+const connectedGroups = new Set<string>();
 
 @Component({
   selector: 'app-chart-panel',
@@ -51,6 +53,10 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
           height,
         });
         this.chart.group = this.group;
+        if (this.group && !connectedGroups.has(this.group)) {
+          echarts.connect(this.group);
+          connectedGroups.add(this.group);
+        }
         this.applyOption();
       } else {
         this.chart.resize({ width, height });

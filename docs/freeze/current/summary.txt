@@ -10,8 +10,8 @@ Efficiency CI: Wilson 95%
 Thresholds (last seed calibration):
   mismatched_mf:  4.2181
   excess_power:   115.9449
-  keno_residual_ep: 2419.6685  (excess power on residual)
-  keno (noise):   0.0205  (residual RMS ratio)
+  keno_residual_ep: 17842.0777  (excess power on residual)
+  keno (noise):   0.0818  (residual RMS ratio)
   keno (signal):  0.7500  (waveform overlap, eval-only)
 
 [oracle_mf]
@@ -33,11 +33,11 @@ Thresholds (last seed calibration):
 [keno]
   SNR @ 50% efficiency: 2.00
   False-alarm rate: 1.0% (9/900)
-  Mean peak recovery error: 2.3016 (max |residual − signal|; can be large despite high overlap)
-  Mean normalized recovery error: 0.0223 (RMS error / RMS signal)
-  Mean signal overlap: 0.9996
+  Mean peak recovery error: 65.1875 (max |residual − signal|; can be large despite high overlap)
+  Mean normalized recovery error: 0.3740 (RMS error / RMS signal)
+  Mean signal overlap: 0.9010
   Per burst-type efficiency @ SNR 2.0:
-    ringdown: 100.0% [92.0%, 100.0%] (n=44)
+    ringdown: 79.5% [65.5%, 88.8%] (n=44)
     sine_gaussian: 100.0% [93.6%, 100.0%] (n=56)
-    white_noise_burst: 100.0% [92.9%, 100.0%] (n=50)
+    white_noise_burst: 98.0% [89.5%, 99.6%] (n=50)
 

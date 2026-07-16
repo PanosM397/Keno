@@ -75,6 +75,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--output", default=settings.model_checkpoint_path)
+    parser.add_argument(
+        "--init-checkpoint",
+        type=Path,
+        default=None,
+        help="Optional existing checkpoint to warm-start from (fine-tune)",
+    )
     return parser
 
 
@@ -216,6 +222,13 @@ def train(args: argparse.Namespace) -> Path:
     )
 
     model = NoiseDenoiser1DUNet().to(device)
+    if args.init_checkpoint is not None:
+        init_path = Path(args.init_checkpoint)
+        if not init_path.exists():
+            raise FileNotFoundError(f"Init checkpoint not found: {init_path}")
+        state = torch.load(init_path, map_location=device)
+        model.load_state_dict(state)
+        logger.info("Warm-started from %s", init_path)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 

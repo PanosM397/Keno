@@ -69,8 +69,8 @@ def envelope_peak_time_seconds(
 ) -> float:
     """Sample-resolution peak time of a short smoothed energy envelope.
 
-    Used for multi-detector timing vetoes. STFT frame hops (~15 ms) are too
-    coarse for a ±10 ms Hanford–Livingston light-travel window. Edge samples
+    Used as a multi-detector alignment diagnostic. STFT frame hops (~15 ms) are
+    too coarse for a ±10 ms Hanford–Livingston light-travel window. Edge samples
     are ignored so subtraction boundary artifacts cannot dominate the peak.
     """
     if data.size == 0:

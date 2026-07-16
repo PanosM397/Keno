@@ -31,7 +31,7 @@ The server starts on `http://localhost:8000` by default. Interactive API docs ar
 | GET    | `/health`         | Service + model health                                                       |
 | POST   | `/api/v1/denoise` | Body: `gps_time`, `detector`, `duration`. Fetches strain via GWOSC, runs the model, returns `raw_strain`, `predicted_noise`, `residual` |
 | POST   | `/api/v1/detect`  | Same fetch + subtraction, plus template-free excess-power on raw vs residual with calibrated detection flags |
-| POST   | `/api/v1/detect/coincidence` | H1+L1 coherent ±10 ms lag-scan on residuals with polarity search and timing veto |
+| POST   | `/api/v1/detect/coincidence` | H1+L1 coherent ±10 ms lag-scan on residuals with polarity search; timing gated on best coherent lag |
 
 ## Scientific proof pipeline
 

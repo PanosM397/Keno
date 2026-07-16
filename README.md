@@ -20,21 +20,38 @@ The residual `S_clean` is what's left over for physicists to inspect for unmodel
 | `/backend`    | Node.js, Express                    | Orchestrator/proxy between the frontend, GWOSC, and the ML engine   |
 | `/frontend`   | Angular                             | Three-pane synchronized diff-viewer (Raw / Predicted Noise / Residual) |
 
-## Getting Started
+## Quickstart (three terminals)
 
-Each service has its own README with setup instructions:
+Ensure a trained checkpoint exists at `ml-engine/checkpoints/unet_denoiser.pt` (required for residual search).
 
-- [`ml-engine/README.md`](./ml-engine/README.md)
-- [`backend/README.md`](./backend/README.md)
-- `frontend/` — scaffold with the Angular CLI (see instructions below)
-
-### Frontend scaffold
-
-From the repository root:
+**Terminal 1 — ML engine** (port 8000):
 
 ```bash
-npx @angular/cli new frontend --style=scss --routing --skip-git --strict
+cd ml-engine
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+uvicorn main:app --reload
 ```
+
+**Terminal 2 — Backend** (port 4000):
+
+```bash
+cd backend
+cp .env.example .env        # first time only
+npm install                 # first time only
+npm run dev
+```
+
+**Terminal 3 — Frontend** (port 4200):
+
+```bash
+cd frontend
+npm install                 # first time only
+npm start
+```
+
+Open [http://localhost:4200](http://localhost:4200), pick a preset event (e.g. GW150914), and press **Run analysis**.
+
+Per-service details: [`ml-engine/README.md`](./ml-engine/README.md), [`backend/README.md`](./backend/README.md), [`frontend/README.md`](./frontend/README.md).
 
 ## Data Flow
 
@@ -50,3 +67,5 @@ Keno is evaluated against template-based baselines (including AresGW-like fixed-
 ```bash
 cd ml-engine && python -m app.prove
 ```
+
+Frozen reproducibility artifacts live in [`docs/freeze/current/`](./docs/freeze/current/).

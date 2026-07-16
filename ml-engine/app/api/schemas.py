@@ -74,7 +74,7 @@ class CoincidenceRequest(BaseModel):
         default=10.0,
         ge=0.0,
         le=100.0,
-        description="Max coherent lag scan / timing veto window in milliseconds",
+        description="Max coherent lag scan / timing gate window in milliseconds",
     )
 
 

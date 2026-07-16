@@ -199,7 +199,8 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 - **mismatched_mf** — proxy for fixed-template methods like AresGW on the wrong morphology. Failure here is expected and is the scientific point.
 - **excess_power (raw)** — cWB-style search without subtraction. Keno wins if keno_residual_ep reaches 50% efficiency at lower SNR than raw excess power.
 - **O3 glitch stress** — Gravity Spy instrumental glitches. High residual survival is expected when glitches are burst-like; production defense is multi-detector coincidence, not single-detector kill rate.
-- **cWB follow-up** — published cWB/GWTC GPS times run through Keno’s coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim.
+- **Production coincidence timing** — gated on best coherent lag within ±max_lag_ms. Independent envelope peak Δt is diagnostic only.
+- **cWB follow-up** — published cWB/GWTC GPS times run through Keno’s coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim. GW170817 may trigger with large envelope mismatch because of the known L1 glitch — report as contaminated recovery, not an independent detection.
 
 ## Key headline metrics (1% FAR)
 
@@ -223,7 +224,7 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 ## What would convince a LIGO collaborator
 
 - [x] keno_residual_ep beats raw excess_power at 0.1% FAR on unknown morphology
-- [x] Mean normalized recovery error < 0.15 on held-out injections (Phase 1 validate)
+- [{"x" if passed_validate else " "}] Mean normalized recovery error < 0.15 on held-out injections (Phase 1 validate)
 - [x] Multi-detector coherence (H1 + L1 coherent lag-scan) — see coincidence section above
 - [x] Comparison on real O3 glitch catalogs (Gravity Spy) — see glitch stress section above
 - [{"x" if cwb_done else " "}] Blind follow-up on published cWB event lists — see cWB follow-up section above

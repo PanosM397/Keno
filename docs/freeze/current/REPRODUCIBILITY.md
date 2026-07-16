@@ -1,8 +1,8 @@
 # Keno reproducibility freeze
 
-**Label:** `2026-07-16-portfolio`  
-**Frozen (UTC):** 2026-07-16 14:07  
-**Checkpoint SHA256:** `55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a`
+**Label:** `2026-07-16-lag-gate`  
+**Frozen (UTC):** 2026-07-16 17:05  
+**Checkpoint SHA256:** `be953501e1c7a7c1ad827afa754c7907e90793e5559c138ceb66dc6c2133d1ef`
 
 This directory pins the scientific artifacts behind
 [`SCIENTIFIC_VALIDATION.md`](../SCIENTIFIC_VALIDATION.md) for portfolio / preprint use.
@@ -18,7 +18,7 @@ sha256sum ml-engine/checkpoints/unet_denoiser.pt
 Get-FileHash ml-engine/checkpoints/unet_denoiser.pt -Algorithm SHA256
 ```
 
-Expected: `55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a`
+Expected: `be953501e1c7a7c1ad827afa754c7907e90793e5559c138ceb66dc6c2133d1ef`
 
 ## Reproduce (venv required)
 
