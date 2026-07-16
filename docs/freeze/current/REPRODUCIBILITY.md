@@ -1,7 +1,7 @@
 # Keno reproducibility freeze
 
 **Label:** `2026-07-16-portfolio`  
-**Frozen (UTC):** 2026-07-16 13:33  
+**Frozen (UTC):** 2026-07-16 14:06  
 **Checkpoint SHA256:** `55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a`
 
 This directory pins the scientific artifacts behind
@@ -28,6 +28,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 python -m app.training.validate
 python -m app.evaluation.run_coincidence --noise-trials 50 --max-lag-ms 10
 python -m app.evaluation.run_glitch_stress --per-label 5
+python -m app.evaluation.run_cwb_followup
 python -m app.prove --skip-campaign
 python -m app.evaluation.freeze_bundle
 ```

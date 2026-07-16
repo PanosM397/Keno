@@ -1,0 +1,22 @@
+event_id,gps_time,cohort,detectors,n_available,raw_coincident,independent_residual_coincident,residual_coincident,source,note,error,h1_available,h1_raw_detected,h1_residual_detected,h1_raw_ep,h1_residual_ep,l1_available,l1_raw_detected,l1_residual_detected,l1_raw_ep,l1_residual_ep,coherent_ep,best_lag_ms,best_polarity,peak_dt_ms,timing_ok,coherent_detected
+GW150914,1126259462.4,gwtc_cwb,"H1,L1",2,False,False,True,GWOSC+cWB docs,O1 first BBH — cWB discovery path,,True,False,True,71.0525,358720,True,False,False,32.4679,833.257,192882,7.812,-1,-7.568,True,True
+GW151226,1135136350.6,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O1 BBH,,True,False,False,18.2762,31.5182,True,False,False,15.9971,322.67,175.358,9.766,1,2686.523,False,False
+GW170104,1167559936.6,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 BBH,,True,False,False,16.0662,38.2762,True,False,False,27.2631,257.554,215.127,-3.174,-1,-27.344,False,False
+GW170608,1180922494.5,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 BBH,,True,False,True,25.1361,4049.26,True,False,False,15.3731,32.164,1981.96,0.977,1,1977.051,False,False
+GW170729,1185389807.3,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 heavy BBH — strong cWB,,True,False,False,16.3362,50.4684,True,False,False,17.703,28.9207,43.0243,10.010,1,1365.479,False,False
+GW170809,1186302519.8,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 BBH,,True,False,False,18.4898,34.2778,True,False,False,19.4048,24.9852,28.7244,-4.395,1,-734.131,False,False
+GW170814,1186741861.5,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 three-detector BBH,,True,False,False,18.4209,45.8342,True,False,False,47.1908,154.227,122.209,-3.418,-1,-11.719,False,False
+GW170817,1187008882.4,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,BNS — L1 glitch; cWB often misses,,True,False,False,19.4995,27.4566,True,True,True,370376,2.36855e+09,3.81638e+08,7.324,1,233.154,False,False
+GW170818,1187058327.1,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 BBH,,True,False,False,16.3543,30.8094,True,False,False,23.3351,73.5824,53.3083,-9.277,-1,-467.773,False,False
+GW170823,1187529256.5,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O2 BBH,,True,False,False,23.6012,25.0523,True,False,False,27.2015,38.8082,39.5764,6.104,1,-19.043,False,False
+GW190412,1239082262.1,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3a unequal-mass BBH,,True,False,False,18.8149,41.1564,True,False,False,39.7962,337.829,218.6,-9.033,1,904.297,False,False
+GW190521,1242442967.4,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3a IMBH-like — cWB hallmark,,True,False,False,31.5397,92.1801,True,False,False,74.9615,133.551,226.574,3.662,1,-17.090,False,False
+GW190521_074359,1242459857.4,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3a loud BBH,,True,False,False,35.554,155.558,True,False,True,110.016,13733.9,8129.21,-3.906,1,-14.160,False,False
+GW190706_222641,1246487219.3,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3a heavy BBH,,True,False,False,39.3469,30.6815,True,False,False,43.4382,98.7752,77.016,-9.766,-1,-2.930,True,False
+GW190814,1249852257.0,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3a NSBH/BBH,,True,False,False,17.3893,39.4549,True,False,False,28.9429,358.661,204.543,1.221,1,-1725.098,False,False
+GW191109_010717,1257296855.2,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3b BBH,,True,False,False,44.0154,97.9869,True,False,True,74.0783,43777.6,23334.9,5.371,-1,-26.611,False,False
+GW200224_222234,1266618172.4,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3b BBH,,True,False,False,44.4264,585.853,True,False,False,37.9595,1946.77,1288.88,-6.104,-1,27.344,False,False
+GW200225_060421,1266645879.3,gwtc_cwb,"H1,L1",2,False,False,False,GWOSC+cWB docs,O3b BBH,,True,False,False,17.9319,104.628,True,False,False,15.8163,24.8801,109.888,9.766,-1,155.273,False,False
+cWB_190607,1243931925.9,cwb_only,"H1,L1",2,False,False,False,arXiv:2410.15191,cWB-only candidate IFAR 11.7 yr,,True,False,False,16.2117,41.5825,True,False,False,21.2401,346.304,246.34,9.033,-1,1529.541,False,False
+cWB_190711,1246849694.6,cwb_only,"H1,L1",2,False,False,False,arXiv:2410.15191,cWB-only candidate IFAR 40.7 yr,,True,False,False,17.2652,42.1943,True,False,False,26.0316,41.4391,35.5117,-10.010,-1,389.648,False,False
+cWB_200318,1268594035.1,cwb_only,"H1,L1",2,False,False,False,arXiv:2410.15191,cWB-only candidate IFAR 4.5 yr,,True,False,False,13.5693,24.1995,True,False,False,19.0596,30.669,26.2023,-2.930,1,-93.262,False,False

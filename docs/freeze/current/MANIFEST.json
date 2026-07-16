@@ -1,6 +1,6 @@
 {
   "label": "2026-07-16-portfolio",
-  "frozen_at_utc": "2026-07-16T13:33:54Z",
+  "frozen_at_utc": "2026-07-16T14:06:48Z",
   "hypothesis": "S_clean = S_raw - N_predicted; template-free excess power on residual",
   "checkpoint": {
     "path": "checkpoints/unet_denoiser.pt",
@@ -23,6 +23,7 @@
     "python -m app.training.validate",
     "python -m app.evaluation.run_coincidence --noise-trials 50 --max-lag-ms 10",
     "python -m app.evaluation.run_glitch_stress --per-label 5",
+    "python -m app.evaluation.run_cwb_followup",
     "python -m app.prove --skip-campaign",
     "python -m app.evaluation.freeze_bundle"
   ],
@@ -36,7 +37,7 @@
     },
     "calibration.json": {
       "path": "data/evaluation/calibration.json",
-      "sha256": "b0564dadc3cd49a8b22a384258a765c9142b50ff743daad9f1580cc7a33d226b",
+      "sha256": "58f6929c06391a736d398610a6d57f1caa4d5d8b300d2346075f9a880f5c7187",
       "bytes": 596,
       "copied": true,
       "freeze_path": "calibration.json"
@@ -97,6 +98,20 @@
       "copied": true,
       "freeze_path": "glitch_stress_burst_controls.csv"
     },
+    "cwb_followup_summary.txt": {
+      "path": "data/evaluation/cwb_followup_summary.txt",
+      "sha256": "cb988f50af03bdc17d82a6166c558cffcd7095d248d7e89ceb5cbdf89661d48e",
+      "bytes": 3251,
+      "copied": true,
+      "freeze_path": "cwb_followup_summary.txt"
+    },
+    "cwb_followup_trials.csv": {
+      "path": "data/evaluation/cwb_followup_trials.csv",
+      "sha256": "4a9456a73a03018bfe99f5225049d77c8322c5eebe36c16b8a3ce5975be2fcf8",
+      "bytes": 4533,
+      "copied": true,
+      "freeze_path": "cwb_followup_trials.csv"
+    },
     "efficiency_vs_snr_unknown.png": {
       "path": "data/evaluation/efficiency_vs_snr_unknown.png",
       "sha256": "f9c1a02fe9721d392f1969594816aebe694aac7c174fc5334b2f07a909718765",
@@ -143,10 +158,17 @@
       "copied": true,
       "freeze_path": "o3_glitch_subset.csv"
     },
+    "catalogs/cwb_followup_events.csv": {
+      "path": "ml-engine/catalogs/cwb_followup_events.csv",
+      "sha256": "02b045a0cc372c3b7fa1cd2e3cbd424493be93d0f4a56843cfdac8a625b6dc08",
+      "bytes": 1625,
+      "copied": true,
+      "freeze_path": "cwb_followup_events.csv"
+    },
     "docs/SCIENTIFIC_VALIDATION.md": {
       "path": "docs/SCIENTIFIC_VALIDATION.md",
-      "sha256": "2cb7028c52befa8eca58a30d934df2474957453b48d3b85d7bea3c09decf228b",
-      "bytes": 9681,
+      "sha256": "6a8798a1d151298b22b7287f87b765d054f1d1494d8e750c6ca2fc6245e0cbad",
+      "bytes": 13240,
       "copied": true,
       "freeze_path": "SCIENTIFIC_VALIDATION.md"
     }

@@ -205,11 +205,31 @@ def write_outputs(
         "",
         f"Catalog: {catalog_path}",
         f"Sources: GWOSC GWTC GPS times + cWB-only O3 candidates (arXiv:2410.15191)",
-        f"Production path: coherent residual lag-scan (±{max_lag_ms:g} ms)",
+        f"Production path: coherent residual lag-scan (+/-{max_lag_ms:g} ms)",
         f"Checkpoint loaded: {engine.checkpoint_loaded}",
-        f"Events: {len(records)} listed, {len(analyzed)} with ≥1 detector, {len(dual)} with H1+L1",
+        f"Events: {len(records)} listed, {len(analyzed)} with >=1 detector, {len(dual)} with H1+L1",
         "",
     ]
+
+    def _ep_above_threshold(rows: list[dict]) -> tuple[str, int, int]:
+        """Coherent EP clears residual threshold (timing veto ignored)."""
+        cal_threshold = None
+        try:
+            from app.services.residual_search import load_calibration
+
+            cal_threshold = float(load_calibration()["excess_power_residual"])
+        except Exception:
+            cal_threshold = 2310.0
+        flags = []
+        for row in rows:
+            try:
+                flags.append(float(row.get("coherent_ep") or 0) >= cal_threshold)
+            except (TypeError, ValueError):
+                flags.append(False)
+        if not flags:
+            return "n/a", 0, 0
+        eff, lo, hi = efficiency_with_ci(flags)
+        return f"{eff:.1%} [{lo:.1%}, {hi:.1%}]", sum(flags), len(flags)
 
     for cohort in ("gwtc_cwb", "cwb_only"):
         cohort_rows = [r for r in dual if r.get("cohort") == cohort]
@@ -220,10 +240,12 @@ def write_outputs(
         prod, pn, pt = _rate(cohort_rows, "residual_coincident")
         indep, inn, intot = _rate(cohort_rows, "independent_residual_coincident")
         raw, rn, rt = _rate(cohort_rows, "raw_coincident")
+        ep_rate, epn, ept = _ep_above_threshold(cohort_rows)
         lines.extend(
             [
                 f"[{cohort}] dual-detector events (n={len(cohort_rows)}):",
                 f"  Production residual coincidence: {prod} ({pn}/{pt})",
+                f"  Coherent EP above threshold (timing ignored): {ep_rate} ({epn}/{ept})",
                 f"  Independent residual coincidence: {indep} ({inn}/{intot})",
                 f"  Raw excess-power coincidence:     {raw} ({rn}/{rt})",
                 "",
@@ -252,7 +274,10 @@ def write_outputs(
             "How to read:",
             "- gwtc_cwb: published GWTC events also reported by cWB documentation.",
             "- cwb_only: O3 candidates reported only by upgraded cWB (arXiv:2410.15191).",
-            "- YES means Keno production coherent residual coincidence triggers.",
+            "- YES means Keno production coherent residual coincidence triggers",
+            "  (coherent EP above threshold AND envelope peak dt within max lag).",
+            "- High coherent EP with timing=False is a near-miss: energy is present but",
+            "  single-detector envelope peaks are not aligned within +/-max-lag-ms.",
             "- This is a follow-up consistency check, not an independent discovery claim.",
             "",
         ]
@@ -288,7 +313,10 @@ def main() -> None:
         catalog_path=args.catalog,
         max_lag_ms=args.max_lag_ms,
     )
-    print(summary_path.read_text(encoding="utf-8"))
+    try:
+        print(summary_path.read_text(encoding="utf-8"))
+    except UnicodeEncodeError:
+        print(summary_path.read_text(encoding="utf-8").encode("ascii", errors="replace").decode("ascii"))
 
 
 if __name__ == "__main__":
