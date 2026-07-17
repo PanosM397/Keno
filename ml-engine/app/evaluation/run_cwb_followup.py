@@ -19,10 +19,12 @@ from pathlib import Path
 
 from app.evaluation.metrics import efficiency_with_ci
 from app.services.coincidence_search import (
+    DEFAULT_MAX_ENVELOPE_DT_MS,
     DEFAULT_MAX_LAG_MS,
     CoincidenceSearchResult,
     run_coincidence_search,
 )
+from app.services.residual_search import load_calibration
 from app.services.subtraction_model import engine
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,7 @@ def analyze_catalog_event(
     *,
     duration: int,
     max_lag_ms: float,
+    max_envelope_dt_ms: float,
 ) -> dict:
     event_id = str(row["event_id"])
     gps_time = float(row["gps_time"])
@@ -63,6 +66,7 @@ def analyze_catalog_event(
         detectors,
         duration,
         max_lag_ms=max_lag_ms,
+        max_envelope_dt_ms=max_envelope_dt_ms,
     )
     return _result_to_record(event_id, cohort, row, result)
 
@@ -108,6 +112,7 @@ def _result_to_record(
                 "best_polarity": coherent.best_polarity,
                 "peak_dt_ms": f"{coherent.peak_dt_ms:.3f}",
                 "timing_ok": coherent.timing_ok,
+                "envelope_ok": coherent.envelope_ok,
                 "coherent_detected": coherent.coherent_detected,
             }
         )
@@ -119,6 +124,7 @@ def _result_to_record(
                 "best_polarity": "",
                 "peak_dt_ms": "",
                 "timing_ok": "",
+                "envelope_ok": "",
                 "coherent_detected": "",
             }
         )
@@ -130,6 +136,7 @@ def run_cwb_followup(
     *,
     duration: int,
     max_lag_ms: float,
+    max_envelope_dt_ms: float,
     limit: int | None,
 ) -> list[dict]:
     rows = catalog_rows[:limit] if limit else catalog_rows
@@ -145,7 +152,12 @@ def run_cwb_followup(
         )
         try:
             records.append(
-                analyze_catalog_event(row, duration=duration, max_lag_ms=max_lag_ms)
+                analyze_catalog_event(
+                    row,
+                    duration=duration,
+                    max_lag_ms=max_lag_ms,
+                    max_envelope_dt_ms=max_envelope_dt_ms,
+                )
             )
         except Exception as exc:
             logger.warning("Failed %s: %s", row.get("event_id"), exc)
@@ -167,14 +179,188 @@ def run_cwb_followup(
     return records
 
 
+def _float_or_none(value: object) -> float | None:
+    if value in ("", None):
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _boolish(value: object) -> bool | None:
+    if value in ("", None):
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes"}:
+        return True
+    if text in {"false", "0", "no"}:
+        return False
+    return None
+
+
+def apply_envelope_veto_to_records(
+    records: list[dict],
+    *,
+    residual_threshold: float,
+    max_envelope_dt_ms: float,
+) -> list[dict]:
+    """Recompute production flags from stored coherent EP / peak_dt (no re-fetch)."""
+    updated: list[dict] = []
+    for row in records:
+        out = dict(row)
+        coherent_ep = _float_or_none(out.get("coherent_ep"))
+        peak_dt = _float_or_none(out.get("peak_dt_ms"))
+        timing_ok = _boolish(out.get("timing_ok"))
+        if coherent_ep is None or peak_dt is None or timing_ok is None:
+            updated.append(out)
+            continue
+        envelope_ok = abs(peak_dt) <= max_envelope_dt_ms
+        ep_ok = coherent_ep >= residual_threshold
+        detected = ep_ok and timing_ok and envelope_ok
+        out["envelope_ok"] = envelope_ok
+        out["coherent_detected"] = detected
+        out["residual_coincident"] = detected
+        updated.append(out)
+    return updated
+
+def _classify_miss(
+    row: dict,
+    *,
+    residual_threshold: float,
+    single_ifo_threshold: float | None = None,
+    near_miss_fraction: float = 0.8,
+) -> str | None:
+    """Return a miss class for dual-detector non-detections, else None."""
+    if int(row.get("n_available") or 0) < 2:
+        return None
+    if row.get("residual_coincident"):
+        return None
+
+    ifo_thr = single_ifo_threshold if single_ifo_threshold is not None else residual_threshold
+    coherent_ep = _float_or_none(row.get("coherent_ep")) or 0.0
+    peak_dt = _float_or_none(row.get("peak_dt_ms"))
+    timing_ok = _boolish(row.get("timing_ok"))
+    envelope_ok = _boolish(row.get("envelope_ok"))
+    h1_ep = _float_or_none(row.get("h1_residual_ep")) or 0.0
+    l1_ep = _float_or_none(row.get("l1_residual_ep")) or 0.0
+
+    ep_ok = coherent_ep >= residual_threshold
+    if ep_ok and timing_ok and envelope_ok is False:
+        return "envelope_veto"
+    if timing_ok is False:
+        return "timing_fail"
+    if coherent_ep >= near_miss_fraction * residual_threshold:
+        return "threshold_near_miss"
+    if max(h1_ep, l1_ep) >= ifo_thr and min(h1_ep, l1_ep) < 0.25 * ifo_thr:
+        return "one_sided"
+    if peak_dt is not None and abs(peak_dt) > 500:
+        return "misaligned_weak"
+    return "weak"
+
+
+def _autopsy_lines(
+    records: list[dict],
+    *,
+    residual_threshold: float,
+    single_ifo_threshold: float,
+    max_envelope_dt_ms: float,
+) -> list[str]:
+    dual = [r for r in records if int(r.get("n_available") or 0) >= 2]
+    lines = [
+        "Near-miss / veto autopsy:",
+        f"  Coherent EP threshold: {residual_threshold:.4g}",
+        f"  Single-IFO residual EP threshold: {single_ifo_threshold:.4g}",
+        f"  Envelope gate: ±{max_envelope_dt_ms:g} ms",
+        "",
+    ]
+    yes_rows = [r for r in dual if r.get("residual_coincident")]
+    miss_rows = [r for r in dual if not r.get("residual_coincident")]
+    lines.append(f"  Production YES: {len(yes_rows)}/{len(dual)}")
+    for row in yes_rows:
+        peak = row.get("peak_dt_ms", "")
+        lines.append(
+            f"    {row.get('event_id')}: coherent EP {row.get('coherent_ep')} "
+            f"(envelope dt {peak} ms)"
+        )
+
+    by_class: dict[str, list[dict]] = {}
+    for row in miss_rows:
+        label = _classify_miss(
+            row,
+            residual_threshold=residual_threshold,
+            single_ifo_threshold=single_ifo_threshold,
+        ) or "weak"
+        by_class.setdefault(label, []).append(row)
+
+    class_order = (
+        "envelope_veto",
+        "threshold_near_miss",
+        "one_sided",
+        "timing_fail",
+        "misaligned_weak",
+        "weak",
+    )
+    lines.append("")
+    lines.append(f"  Misses: {len(miss_rows)}")
+    for label in class_order:
+        rows = by_class.get(label, [])
+        if not rows:
+            continue
+        lines.append(f"  [{label}] n={len(rows)}")
+        for row in rows:
+            h1 = row.get("h1_residual_ep", "")
+            l1 = row.get("l1_residual_ep", "")
+            ep = row.get("coherent_ep", "")
+            peak = row.get("peak_dt_ms", "")
+            frac = ""
+            coherent_ep = _float_or_none(ep)
+            if coherent_ep is not None and residual_threshold > 0:
+                frac = f", {100.0 * coherent_ep / residual_threshold:.0f}% of threshold"
+            lines.append(
+                f"    {row.get('event_id')}: coherent EP {ep}{frac}, "
+                f"H1/L1 residual EP {h1}/{l1}, envelope dt {peak} ms"
+            )
+
+    lines.append("")
+    lines.append("  Class meanings:")
+    lines.append(
+        "    envelope_veto — coherent EP clears threshold but |envelope peak dt| "
+        "exceeds the glitch-contamination gate"
+    )
+    lines.append(
+        "    threshold_near_miss — coherent EP within 80% of threshold; aligned timing"
+    )
+    lines.append(
+        "    one_sided — one IFO residual clears threshold, the other is weak; "
+        "coherent combination does not"
+    )
+    lines.append("    timing_fail — best coherent lag outside ±max-lag-ms")
+    lines.append("    misaligned_weak — large envelope mismatch and sub-threshold EP")
+    lines.append("    weak — both IFOs and coherent EP well below threshold")
+    lines.append("")
+    return lines
+
+
 def write_outputs(
     *,
     records: list[dict],
     output_dir: Path,
     catalog_path: Path,
     max_lag_ms: float,
+    max_envelope_dt_ms: float,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        cal = load_calibration()
+        residual_threshold = float(cal.get("excess_power_coherent", cal["excess_power_residual"]))
+        single_ifo_threshold = float(cal["excess_power_residual"])
+    except Exception:
+        residual_threshold = 173.09218288671786
+        single_ifo_threshold = 4004.5755146511574
+
     trials_path = output_dir / "cwb_followup_trials.csv"
     if records:
         # Union of keys so partial failure rows still serialize.
@@ -205,25 +391,19 @@ def write_outputs(
         "",
         f"Catalog: {catalog_path}",
         f"Sources: GWOSC GWTC GPS times + cWB-only O3 candidates (arXiv:2410.15191)",
-        f"Production path: coherent residual lag-scan (+/-{max_lag_ms:g} ms)",
+        f"Production path: coherent residual lag-scan (+/-{max_lag_ms:g} ms) "
+        f"+ envelope consistency veto (+/-{max_envelope_dt_ms:g} ms)",
         f"Checkpoint loaded: {engine.checkpoint_loaded}",
         f"Events: {len(records)} listed, {len(analyzed)} with >=1 detector, {len(dual)} with H1+L1",
         "",
     ]
 
     def _ep_above_threshold(rows: list[dict]) -> tuple[str, int, int]:
-        """Coherent EP clears residual threshold (same as production with lag gate)."""
-        cal_threshold = None
-        try:
-            from app.services.residual_search import load_calibration
-
-            cal_threshold = float(load_calibration()["excess_power_residual"])
-        except Exception:
-            cal_threshold = 2310.0
+        """Coherent EP clears residual threshold (lag/envelope gates ignored)."""
         flags = []
         for row in rows:
             try:
-                flags.append(float(row.get("coherent_ep") or 0) >= cal_threshold)
+                flags.append(float(row.get("coherent_ep") or 0) >= residual_threshold)
             except (TypeError, ValueError):
                 flags.append(False)
         if not flags:
@@ -245,7 +425,7 @@ def write_outputs(
             [
                 f"[{cohort}] dual-detector events (n={len(cohort_rows)}):",
                 f"  Production residual coincidence: {prod} ({pn}/{pt})",
-                f"  Coherent EP above threshold (lag gate only): {ep_rate} ({epn}/{ept})",
+                f"  Coherent EP above threshold (gates ignored): {ep_rate} ({epn}/{ept})",
                 f"  Independent residual coincidence: {indep} ({inn}/{intot})",
                 f"  Raw excess-power coincidence:     {raw} ({rn}/{rt})",
                 "",
@@ -260,24 +440,40 @@ def write_outputs(
         lag = row.get("best_lag_ms", "")
         ep = row.get("coherent_ep", "")
         timing = row.get("timing_ok", "")
+        envelope = row.get("envelope_ok", "")
         extra = ""
         if ep not in ("", None):
-            extra = f" — coherent EP {ep}, lag {lag} ms, timing {timing}"
+            extra = (
+                f" — coherent EP {ep}, lag {lag} ms, "
+                f"timing {timing}, envelope {envelope}"
+            )
         err = f" ({row['error']})" if row.get("error") else ""
         lines.append(
             f"  [{row.get('cohort')}] {row.get('event_id')}: {status}{extra}{err}"
         )
 
+    lines.append("")
+    lines.extend(
+        _autopsy_lines(
+            records,
+            residual_threshold=residual_threshold,
+            single_ifo_threshold=single_ifo_threshold,
+            max_envelope_dt_ms=max_envelope_dt_ms,
+        )
+    )
+
     lines.extend(
         [
-            "",
             "How to read:",
             "- gwtc_cwb: published GWTC events also reported by cWB documentation.",
             "- cwb_only: O3 candidates reported only by upgraded cWB (arXiv:2410.15191).",
             "- YES means Keno production coherent residual coincidence triggers",
-            "  (coherent EP above threshold AND best coherent lag within +/-max-lag-ms).",
-            "- Envelope peak dt is diagnostic only; large envelope mismatch with YES",
-            "  can indicate residual glitch contamination (e.g. GW170817 L1 glitch).",
+            "  (coherent EP above the dual-IFO coherent threshold AND best coherent lag",
+            "  within +/-max-lag-ms AND |envelope peak dt| within +/-max-envelope-dt-ms).",
+            "- Envelope veto rejects single-IFO glitch contamination (e.g. GW170817 L1)",
+            "  that can clear coherent EP with mismatched residual peaks.",
+            "- Coherent EP threshold is calibrated on envelope-gated dual-IFO noise and",
+            "  is separate from the single-detector residual EP threshold.",
             "- This is a follow-up consistency check, not an independent discovery claim.",
             "",
         ]
@@ -294,24 +490,80 @@ def main() -> None:
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--duration", type=int, default=4)
     parser.add_argument("--max-lag-ms", type=float, default=DEFAULT_MAX_LAG_MS)
+    parser.add_argument(
+        "--max-envelope-dt-ms",
+        type=float,
+        default=DEFAULT_MAX_ENVELOPE_DT_MS,
+        help="Envelope peak Δt veto window in milliseconds",
+    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-dir", type=Path, default=EVAL_DIR)
+    parser.add_argument(
+        "--from-trials",
+        type=Path,
+        default=None,
+        help="Recompute production flags + autopsy from an existing trials CSV (no GWOSC fetch)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    catalog_rows = load_cwb_catalog(args.catalog)
-    records = run_cwb_followup(
-        catalog_rows,
-        duration=args.duration,
-        max_lag_ms=args.max_lag_ms,
-        limit=args.limit,
-    )
+    try:
+        cal = load_calibration()
+        residual_threshold = float(cal.get("excess_power_coherent", cal["excess_power_residual"]))
+    except Exception:
+        residual_threshold = 173.09218288671786
+
+    if args.from_trials is not None:
+        with args.from_trials.open(newline="", encoding="utf-8") as handle:
+            records = list(csv.DictReader(handle))
+        # DictReader yields strings; normalize booleans used by rate helpers.
+        for row in records:
+            for key in (
+                "raw_coincident",
+                "independent_residual_coincident",
+                "residual_coincident",
+                "timing_ok",
+                "envelope_ok",
+                "coherent_detected",
+                "h1_available",
+                "l1_available",
+                "h1_raw_detected",
+                "l1_raw_detected",
+                "h1_residual_detected",
+                "l1_residual_detected",
+            ):
+                parsed = _boolish(row.get(key))
+                if parsed is not None:
+                    row[key] = parsed
+            if "n_available" in row:
+                try:
+                    row["n_available"] = int(row["n_available"])
+                except (TypeError, ValueError):
+                    pass
+        records = apply_envelope_veto_to_records(
+            records,
+            residual_threshold=residual_threshold,
+            max_envelope_dt_ms=args.max_envelope_dt_ms,
+        )
+        catalog_path = args.from_trials
+    else:
+        catalog_rows = load_cwb_catalog(args.catalog)
+        records = run_cwb_followup(
+            catalog_rows,
+            duration=args.duration,
+            max_lag_ms=args.max_lag_ms,
+            max_envelope_dt_ms=args.max_envelope_dt_ms,
+            limit=args.limit,
+        )
+        catalog_path = args.catalog
+
     summary_path = write_outputs(
         records=records,
         output_dir=args.output_dir,
-        catalog_path=args.catalog,
+        catalog_path=catalog_path,
         max_lag_ms=args.max_lag_ms,
+        max_envelope_dt_ms=args.max_envelope_dt_ms,
     )
     try:
         print(summary_path.read_text(encoding="utf-8"))

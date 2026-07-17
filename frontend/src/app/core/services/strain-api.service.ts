@@ -63,8 +63,10 @@ interface CoincidenceResponse {
     best_polarity: number;
     peak_dt_ms: number;
     timing_ok: boolean;
+    envelope_ok: boolean;
     coherent_detected: boolean;
     max_lag_ms: number;
+    max_envelope_dt_ms: number;
   } | null;
   false_alarm_rate: number;
   calibration_note: string;
@@ -144,8 +146,10 @@ export class StrainApiService {
           bestPolarity: response.coherent.best_polarity,
           peakDtMs: response.coherent.peak_dt_ms,
           timingOk: response.coherent.timing_ok,
+          envelopeOk: response.coherent.envelope_ok,
           coherentDetected: response.coherent.coherent_detected,
           maxLagMs: response.coherent.max_lag_ms,
+          maxEnvelopeDtMs: response.coherent.max_envelope_dt_ms,
         }
       : null;
 

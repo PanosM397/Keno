@@ -5,15 +5,15 @@ Known catalog events:
   H1: raw=False residual=True (raw EP 71.05, res EP 18642.9)
   L1: raw=False residual=False (raw EP 32.47, res EP 357.4)
   Raw coincidence: no
-  Coherent lag-scan (±10 ms): EP 11405.5, lag +8.5 ms, polarity -1, envelope peak dt -27.6 ms (diagnostic), timing ok
+  Coherent lag-scan (±10 ms): EP 11405.5, lag +8.5 ms, polarity -1, envelope peak dt -27.6 ms (gate ±50 ms: ok), timing ok
   Independent residual coincidence: no | Production residual coincidence: yes
 
 [GW170817] GPS 1187008882.4 — detectors: H1, L1
   H1: raw=False residual=False (raw EP 19.90, res EP 44.0)
   L1: raw=True residual=True (raw EP 370376.09, res EP 1842794534.9)
   Raw coincidence: no
-  Coherent lag-scan (±10 ms): EP 288540724.8, lag +0.2 ms, polarity +1, envelope peak dt -2101.8 ms (diagnostic), timing ok
-  Independent residual coincidence: no | Production residual coincidence: yes
+  Coherent lag-scan (±10 ms): EP 288540724.8, lag +0.2 ms, polarity +1, envelope peak dt -2101.8 ms (gate ±50 ms: VETO), timing ok
+  Independent residual coincidence: no | Production residual coincidence: no
 
 [GW190425] GPS 1240215503.0 — detectors: L1
   L1: raw=False residual=False (raw EP 19.62, res EP 27.0)

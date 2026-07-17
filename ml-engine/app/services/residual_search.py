@@ -19,14 +19,18 @@ from app.services.subtraction_model import engine
 DEFAULT_SAMPLE_RATE = 4096.0
 CALIBRATION_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "evaluation" / "calibration.json"
 
-# Fallback thresholds from the Jul 2026 campaign (unknown morphology, 1% FAR, 3 seeds).
+# Fallback thresholds from the 2026-07-17-finetuned freeze (unknown morphology, 1% FAR).
+# excess_power_coherent is calibrated on dual-IFO noise that also passes the envelope gate;
+# it is typically much lower than the single-detector residual threshold.
 _DEFAULT_THRESHOLDS = {
     "false_alarm_rate": 0.01,
-    "excess_power_raw": 115.9449,
-    "excess_power_residual": 2310.0,
+    "excess_power_raw": 482.6950993350567,
+    "excess_power_residual": 4004.5755146511574,
+    "excess_power_coherent": 173.09218288671786,
     "calibration_note": (
         "Noise-only GWOSC background at 1.0% FAR; "
-        "residual threshold uses artifact-trimmed calibration."
+        "residual threshold uses artifact-trimmed calibration; "
+        "coherent threshold uses envelope-gated dual-IFO noise."
     ),
 }
 
@@ -49,10 +53,14 @@ class ResidualSearchResult:
 def load_calibration(path: Path = CALIBRATION_PATH) -> dict[str, float]:
     if path.exists():
         payload = json.loads(path.read_text(encoding="utf-8"))
+        residual = float(payload["excess_power_residual"])
+        coherent = payload.get("excess_power_coherent")
         return {
             "false_alarm_rate": float(payload.get("false_alarm_rate", _DEFAULT_THRESHOLDS["false_alarm_rate"])),
             "excess_power_raw": float(payload["excess_power_raw"]),
-            "excess_power_residual": float(payload["excess_power_residual"]),
+            "excess_power_residual": residual,
+            # Fall back to single-detector residual threshold for older calibration files.
+            "excess_power_coherent": float(coherent) if coherent is not None else residual,
             "calibration_note": str(
                 payload.get("calibration_note", _DEFAULT_THRESHOLDS["calibration_note"]),
             ),
@@ -92,6 +100,7 @@ def analyze_strain(
         thresholds={
             "excess_power_raw": raw_threshold,
             "excess_power_residual": residual_threshold,
+            "excess_power_coherent": float(cal.get("excess_power_coherent", residual_threshold)),
         },
         calibration_note=str(cal.get("calibration_note", _DEFAULT_THRESHOLDS["calibration_note"])),
     )

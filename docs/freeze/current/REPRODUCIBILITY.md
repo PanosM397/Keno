@@ -26,9 +26,11 @@ Expected: `962ffc64162f5ae249ffae69f1b8d94453d69f12ccd5489c97eac831dbf06f54`
 cd ml-engine
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 python -m app.training.validate
-python -m app.evaluation.run_coincidence --noise-trials 50 --max-lag-ms 10
+python -m app.evaluation.run_coincidence --noise-trials 50 --max-lag-ms 10 --max-envelope-dt-ms 50
 python -m app.evaluation.run_glitch_stress --per-label 5
-python -m app.evaluation.run_cwb_followup
+python -m app.evaluation.run_cwb_followup --max-lag-ms 10 --max-envelope-dt-ms 50
+# or recompute autopsy from frozen trials without GWOSC:
+# python -m app.evaluation.run_cwb_followup --from-trials ../../docs/freeze/current/cwb_followup_trials.csv --output-dir data/evaluation
 python -m app.prove --skip-campaign
 python -m app.evaluation.freeze_bundle
 ```

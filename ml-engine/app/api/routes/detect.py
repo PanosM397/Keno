@@ -25,8 +25,10 @@ def _to_coincidence_response(result) -> CoincidenceResponse:
             best_polarity=result.coherent.best_polarity,
             peak_dt_ms=result.coherent.peak_dt_ms,
             timing_ok=result.coherent.timing_ok,
+            envelope_ok=result.coherent.envelope_ok,
             coherent_detected=result.coherent.coherent_detected,
             max_lag_ms=result.coherent.max_lag_ms,
+            max_envelope_dt_ms=result.coherent.max_envelope_dt_ms,
         )
     return CoincidenceResponse(
         gps_time=result.gps_time,

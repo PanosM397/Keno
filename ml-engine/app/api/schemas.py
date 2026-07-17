@@ -84,8 +84,10 @@ class CoherentLagScanResponse(BaseModel):
     best_polarity: int
     peak_dt_ms: float
     timing_ok: bool
+    envelope_ok: bool
     coherent_detected: bool
     max_lag_ms: float
+    max_envelope_dt_ms: float
 
 
 class CoincidenceResponse(BaseModel):

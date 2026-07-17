@@ -3,7 +3,8 @@
 Runs H1+L1 blind residual search on catalog events and noise-only GPS times
 where both detectors have cached background. Production dual-detector path
 uses a coherent ±max_lag_ms lag scan with polarity search; timing is gated on
-best coherent lag (envelope peak Δt is diagnostic only).
+best coherent lag, and envelope peak Δt must lie within ±max_envelope_dt_ms
+(glitch-contamination veto).
 
 Usage:
     python -m app.evaluation.run_coincidence
@@ -20,6 +21,7 @@ from pathlib import Path
 import numpy as np
 
 from app.services.coincidence_search import (
+    DEFAULT_MAX_ENVELOPE_DT_MS,
     DEFAULT_MAX_LAG_MS,
     CoincidenceSearchResult,
     KNOWN_COINCIDENCE_EVENTS,
@@ -48,12 +50,14 @@ def _format_coherent(result: CoincidenceSearchResult) -> list[str]:
     coherent = result.coherent
     if coherent is None:
         return []
+    envelope_label = "ok" if coherent.envelope_ok else "VETO"
     return [
         f"  Coherent lag-scan (±{coherent.max_lag_ms:g} ms): "
         f"EP {coherent.coherent_excess_power:.1f}, "
         f"lag {coherent.best_lag_ms:+.1f} ms, "
         f"polarity {coherent.best_polarity:+d}, "
-        f"envelope peak dt {coherent.peak_dt_ms:+.1f} ms (diagnostic), "
+        f"envelope peak dt {coherent.peak_dt_ms:+.1f} ms "
+        f"(gate ±{coherent.max_envelope_dt_ms:g} ms: {envelope_label}), "
         f"timing {'ok' if coherent.timing_ok else 'VETO'}",
         f"  Independent residual coincidence: "
         f"{'yes' if result.independent_residual_coincident else 'no'} | "
@@ -66,6 +70,7 @@ def run_known_event_study(
     duration: int = 4,
     *,
     max_lag_ms: float = DEFAULT_MAX_LAG_MS,
+    max_envelope_dt_ms: float = DEFAULT_MAX_ENVELOPE_DT_MS,
 ) -> tuple[list[dict], list[tuple[dict, CoincidenceSearchResult]]]:
     records: list[dict] = []
     results: list[tuple[dict, CoincidenceSearchResult]] = []
@@ -76,6 +81,7 @@ def run_known_event_study(
             detectors,
             duration,
             max_lag_ms=max_lag_ms,
+            max_envelope_dt_ms=max_envelope_dt_ms,
         )
         results.append((event, result))
         record = {
@@ -95,6 +101,7 @@ def run_known_event_study(
                     "best_polarity": result.coherent.best_polarity,
                     "peak_dt_ms": result.coherent.peak_dt_ms,
                     "timing_ok": result.coherent.timing_ok,
+                    "envelope_ok": result.coherent.envelope_ok,
                 }
             )
         for det in result.detectors:
@@ -112,6 +119,7 @@ def run_noise_coincidence_study(
     duration: int,
     seed: int,
     max_lag_ms: float = DEFAULT_MAX_LAG_MS,
+    max_envelope_dt_ms: float = DEFAULT_MAX_ENVELOPE_DT_MS,
 ) -> list[dict]:
     gps_times = dual_detector_gps_times()
     if not gps_times:
@@ -123,7 +131,11 @@ def run_noise_coincidence_study(
     for trial_index in range(noise_trials):
         gps_time = float(rng.choice(gps_times))
         result = run_cached_noise_coincidence(
-            gps_time, duration, max_lag_ms=max_lag_ms, rng=rng
+            gps_time,
+            duration,
+            max_lag_ms=max_lag_ms,
+            max_envelope_dt_ms=max_envelope_dt_ms,
+            rng=rng,
         )
         if result is None:
             continue
@@ -145,6 +157,7 @@ def run_noise_coincidence_study(
                     "best_lag_ms": result.coherent.best_lag_ms,
                     "peak_dt_ms": result.coherent.peak_dt_ms,
                     "timing_ok": result.coherent.timing_ok,
+                    "envelope_ok": result.coherent.envelope_ok,
                 }
             )
         records.append(record)
@@ -225,19 +238,28 @@ def main() -> None:
     parser.add_argument("--duration", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-lag-ms", type=float, default=DEFAULT_MAX_LAG_MS)
+    parser.add_argument(
+        "--max-envelope-dt-ms",
+        type=float,
+        default=DEFAULT_MAX_ENVELOPE_DT_MS,
+        help="Envelope peak Δt veto window in milliseconds",
+    )
     parser.add_argument("--output-dir", type=Path, default=EVAL_DIR)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     known_records, known_results = run_known_event_study(
-        args.duration, max_lag_ms=args.max_lag_ms
+        args.duration,
+        max_lag_ms=args.max_lag_ms,
+        max_envelope_dt_ms=args.max_envelope_dt_ms,
     )
     noise_records = run_noise_coincidence_study(
         noise_trials=args.noise_trials,
         duration=args.duration,
         seed=args.seed,
         max_lag_ms=args.max_lag_ms,
+        max_envelope_dt_ms=args.max_envelope_dt_ms,
     )
     summary_path = write_outputs(
         known_records=known_records,

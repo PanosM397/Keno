@@ -44,6 +44,7 @@ from app.evaluation.run_glitch_stress import (
     run_glitch_study,
     write_outputs as write_glitch_outputs,
 )
+from app.services.coincidence_search import DEFAULT_MAX_ENVELOPE_DT_MS, calibrate_coherent_threshold
 from app.services.subtraction_model import engine
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,10 @@ def export_calibration(false_alarm_rate: float = 0.01) -> Path:
         sample_noise_only_trial(segments, 4.0, rng, morphology="unknown") for _ in range(300)
     ]
     thresholds = calibrate_method_thresholds(noise_trials, false_alarm_rate)
+    coherent = calibrate_coherent_threshold(
+        noise_trials=1500,
+        false_alarm_rate=false_alarm_rate,
+    )
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -78,13 +83,21 @@ def export_calibration(false_alarm_rate: float = 0.01) -> Path:
         "checkpoint_loaded": engine.checkpoint_loaded,
         "excess_power_raw": thresholds["excess_power"],
         "excess_power_residual": thresholds["keno_residual_ep"],
+        "excess_power_coherent": coherent["excess_power_coherent"],
+        "coherent_noise_trials": int(coherent["coherent_noise_trials"]),
+        "coherent_envelope_ok_trials": int(coherent["coherent_envelope_ok_trials"]),
+        "coherent_gated_max_ep": coherent["coherent_gated_max_ep"],
+        "coherent_empirical_far": coherent["coherent_empirical_far"],
         "mismatched_mf": thresholds["mismatched_mf"],
         "keno_noise_rms_ratio": thresholds["keno"],
         "residual_ep_artifact_trim_fraction": KENO_RESIDUAL_EP_ARTIFACT_TRIM,
         "calibration_note": (
             f"Noise-only GWOSC background at {false_alarm_rate:.1%} target FAR. "
             f"Residual excess-power threshold trims the upper "
-            f"{KENO_RESIDUAL_EP_ARTIFACT_TRIM:.0%} of subtraction-glitched trials before calibration."
+            f"{KENO_RESIDUAL_EP_ARTIFACT_TRIM:.0%} of subtraction-glitched trials before calibration. "
+            f"Coherent threshold uses envelope-gated dual-IFO noise "
+            f"({int(coherent['coherent_envelope_ok_trials'])}/{int(coherent['coherent_noise_trials'])} gated; "
+            f"empirical joint FAR {coherent['coherent_empirical_far']:.2%})."
         ),
     }
 
@@ -163,7 +176,8 @@ Calibrated on {calibration.get("noise_trials", "?")} noise-only windows from cac
 | Statistic | Threshold |
 |-----------|-----------|
 | Excess power (raw strain) | {calibration.get("excess_power_raw", "n/a")} |
-| Excess power (Keno residual) | {calibration.get("excess_power_residual", "n/a")} |
+| Excess power (Keno residual, single-IFO) | {calibration.get("excess_power_residual", "n/a")} |
+| Excess power (Keno coherent, H1+L1) | {calibration.get("excess_power_coherent", "n/a")} |
 | Mismatched MF (AresGW-like) | {calibration.get("mismatched_mf", "n/a")} |
 
 Production API: `POST /api/v1/detect` uses these thresholds.
@@ -199,8 +213,8 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 - **mismatched_mf** — proxy for fixed-template methods like AresGW on the wrong morphology. Failure here is expected and is the scientific point.
 - **excess_power (raw)** — cWB-style search without subtraction. Keno wins if keno_residual_ep reaches 50% efficiency at lower SNR than raw excess power.
 - **O3 glitch stress** — Gravity Spy instrumental glitches. High residual survival is expected when glitches are burst-like; production defense is multi-detector coincidence, not single-detector kill rate.
-- **Production coincidence timing** — gated on best coherent lag within ±max_lag_ms. Independent envelope peak Δt is diagnostic only.
-- **cWB follow-up** — published cWB/GWTC GPS times run through Keno’s coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim. GW170817 may trigger with large envelope mismatch because of the known L1 glitch — report as contaminated recovery, not an independent detection.
+- **Production coincidence timing** — gated on best coherent lag within ±max_lag_ms and envelope peak Δt within ±max_envelope_dt_ms (glitch-contamination veto). Large envelope mismatch rejects single-IFO glitch recoveries (e.g. GW170817 L1). Dual-IFO coherent EP uses a separate envelope-gated noise threshold from single-detector residual EP.
+- **cWB follow-up** — published cWB/GWTC GPS times run through Keno’s coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim.
 
 ## Key headline metrics (1% FAR)
 
@@ -331,6 +345,7 @@ def prove(args: argparse.Namespace) -> int:
                 cwb_rows,
                 duration=4,
                 max_lag_ms=args.max_lag_ms,
+                max_envelope_dt_ms=args.max_envelope_dt_ms,
                 limit=cwb_limit,
             )
             cwb_path = write_cwb_outputs(
@@ -338,6 +353,7 @@ def prove(args: argparse.Namespace) -> int:
                 output_dir=EVAL_DIR,
                 catalog_path=cwb_catalog,
                 max_lag_ms=args.max_lag_ms,
+                max_envelope_dt_ms=args.max_envelope_dt_ms,
             )
             cwb_text = _read_summary(cwb_path)
         else:
@@ -435,6 +451,12 @@ def main() -> None:
     parser.add_argument("--steps-per-epoch", type=int, default=150)
     parser.add_argument("--false-alarm-rate", type=float, default=0.01)
     parser.add_argument("--max-lag-ms", type=float, default=10.0, help="Coherent lag-scan window (ms)")
+    parser.add_argument(
+        "--max-envelope-dt-ms",
+        type=float,
+        default=DEFAULT_MAX_ENVELOPE_DT_MS,
+        help="Envelope peak Δt glitch-contamination veto window (ms)",
+    )
     parser.add_argument(
         "--freeze",
         action="store_true",

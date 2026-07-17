@@ -58,8 +58,10 @@ export interface CoherentLagScan {
   bestPolarity: number;
   peakDtMs: number;
   timingOk: boolean;
+  envelopeOk: boolean;
   coherentDetected: boolean;
   maxLagMs: number;
+  maxEnvelopeDtMs: number;
 }
 
 export interface CoincidenceResult {

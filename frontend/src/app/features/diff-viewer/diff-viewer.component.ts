@@ -458,11 +458,17 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
       const lag = coherent.bestLagMs >= 0 ? `+${coherent.bestLagMs.toFixed(1)}` : coherent.bestLagMs.toFixed(1);
       return (
         `Production coherent residual coincidence — EP ${this.formatExcessPower(coherent.coherentExcessPower)}, ` +
-        `lag ${lag} ms (envelope peak dt ${coherent.peakDtMs.toFixed(1)} ms, diagnostic).`
+        `lag ${lag} ms (envelope peak dt ${coherent.peakDtMs.toFixed(1)} ms).`
       );
     }
     if (coincidence.residualCoincident) {
       return `Residual coincidence at GPS ${coincidence.gpsTime}.`;
+    }
+    if (coherent && !coherent.envelopeOk) {
+      return (
+        `Coherent EP ${this.formatExcessPower(coherent.coherentExcessPower)} but envelope peak dt ` +
+        `${coherent.peakDtMs.toFixed(1)} ms exceeds ±${coherent.maxEnvelopeDtMs} ms glitch veto.`
+      );
     }
     if (coherent && !coherent.timingOk) {
       return (
