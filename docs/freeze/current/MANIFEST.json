@@ -1,10 +1,10 @@
 {
-  "label": "2026-07-16-lag-gate",
-  "frozen_at_utc": "2026-07-16T17:05:48Z",
+  "label": "2026-07-17-finetuned",
+  "frozen_at_utc": "2026-07-17T00:38:19Z",
   "hypothesis": "S_clean = S_raw - N_predicted; template-free excess power on residual",
   "checkpoint": {
     "path": "checkpoints/unet_denoiser.pt",
-    "sha256": "be953501e1c7a7c1ad827afa754c7907e90793e5559c138ceb66dc6c2133d1ef",
+    "sha256": "962ffc64162f5ae249ffae69f1b8d94453d69f12ccd5489c97eac831dbf06f54",
     "loaded_at_freeze": true
   },
   "environment": {
@@ -30,14 +30,14 @@
   "artifacts": {
     "checkpoint": {
       "path": "checkpoints/unet_denoiser.pt",
-      "sha256": "be953501e1c7a7c1ad827afa754c7907e90793e5559c138ceb66dc6c2133d1ef",
+      "sha256": "962ffc64162f5ae249ffae69f1b8d94453d69f12ccd5489c97eac831dbf06f54",
       "bytes": 1993075,
       "copied": false,
       "note": "gitignored; verify locally with sha256sum / Get-FileHash"
     },
     "calibration.json": {
       "path": "data/evaluation/calibration.json",
-      "sha256": "7ff1a272f14754feb91040ab43ac6d9c9dc9887672e016962fa731e2d7649275",
+      "sha256": "83672fe0c5f33c5a9a4a204a64fa1954dee0b7da57a11d10c2e4ac9177098553",
       "bytes": 583,
       "copied": true,
       "freeze_path": "calibration.json"
@@ -65,15 +65,15 @@
     },
     "coincidence_summary.txt": {
       "path": "data/evaluation/coincidence_summary.txt",
-      "sha256": "18e0d0a8c9f804d006d0ca10cb8662e974808dc9dac3bff99bfdddaabf3e14df",
-      "bytes": 1298,
+      "sha256": "cd79974c5c40a83a8c0fffa43ac6137baaedb33a490b24a16ca7965d3d218ae6",
+      "bytes": 1296,
       "copied": true,
       "freeze_path": "coincidence_summary.txt"
     },
     "coincidence_known_events.csv": {
       "path": "data/evaluation/coincidence_known_events.csv",
-      "sha256": "51dca5baf6de9587d068d428b91758fba97cc231428a25380ee5eecc28344293",
-      "bytes": 643,
+      "sha256": "69ccab6225caf4da75242564878b86a9683bd6f7ca5b48e32ea3274aa54c1ffa",
+      "bytes": 653,
       "copied": true,
       "freeze_path": "coincidence_known_events.csv"
     },
@@ -100,15 +100,15 @@
     },
     "cwb_followup_summary.txt": {
       "path": "data/evaluation/cwb_followup_summary.txt",
-      "sha256": "b3e173ba6da9bb15649e1208dd4d71cba6ddf57278acf990492b7e0d25311301",
-      "bytes": 3171,
+      "sha256": "15ddf730487f6aab758174721af07ea45fb5ce2d0db72e4f824800e513e8edae",
+      "bytes": 3166,
       "copied": true,
       "freeze_path": "cwb_followup_summary.txt"
     },
     "cwb_followup_trials.csv": {
       "path": "data/evaluation/cwb_followup_trials.csv",
-      "sha256": "685f02b9266e5ff22e910699501b58b808dd6a42f39d997380d2eeaafeb1f2cc",
-      "bytes": 4482,
+      "sha256": "faa5d1106ac5105350ce547df29145993084f54295bef04f465ccd61547ef3de",
+      "bytes": 4498,
       "copied": true,
       "freeze_path": "cwb_followup_trials.csv"
     },
@@ -147,8 +147,8 @@
     },
     "coincidence_noise_trials.csv": {
       "path": "data/evaluation/coincidence_noise_trials.csv",
-      "sha256": "356a0d714a0c33bda21ae94e000501ad008a3bf078e7065391fee0b1283d2457",
-      "bytes": 5570,
+      "sha256": "db0ed2a3104444a0833aee8037223f5a3b8f032d0419b04f76df94c50579e373",
+      "bytes": 5563,
       "copied": false
     },
     "catalogs/o3_glitch_subset.csv": {
@@ -167,8 +167,8 @@
     },
     "docs/SCIENTIFIC_VALIDATION.md": {
       "path": "docs/SCIENTIFIC_VALIDATION.md",
-      "sha256": "bcfc5affa1d78cd067e062d0a0e8e8949c6670989cb07a8487fe74794b42a7cf",
-      "bytes": 12953,
+      "sha256": "bda2587b38a06cdb4b1524ffa9ff265a6739c60d1871e2244e1c0755dcf8ef84",
+      "bytes": 12923,
       "copied": true,
       "freeze_path": "SCIENTIFIC_VALIDATION.md"
     }

@@ -7,8 +7,8 @@ Checkpoint loaded: True
 Events: 21 listed, 21 with >=1 detector, 21 with H1+L1
 
 [gwtc_cwb] dual-detector events (n=18):
-  Production residual coincidence: 50.0% [29.0%, 71.0%] (9/18)
-  Coherent EP above threshold (lag gate only): 50.0% [29.0%, 71.0%] (9/18)
+  Production residual coincidence: 27.8% [12.5%, 50.9%] (5/18)
+  Coherent EP above threshold (lag gate only): 27.8% [12.5%, 50.9%] (5/18)
   Independent residual coincidence: 0.0% [0.0%, 17.6%] (0/18)
   Raw excess-power coincidence:     0.0% [0.0%, 17.6%] (0/18)
 
@@ -19,27 +19,27 @@ Events: 21 listed, 21 with >=1 detector, 21 with H1+L1
   Raw excess-power coincidence:     0.0% [0.0%, 56.1%] (0/3)
 
 Per-event production residual coincidence:
-  [gwtc_cwb] GW150914: YES — coherent EP 45904.9, lag 7.324 ms, timing True
-  [gwtc_cwb] GW151226: no — coherent EP 377.511, lag -6.592 ms, timing True
-  [gwtc_cwb] GW170104: no — coherent EP 5959.32, lag -4.395 ms, timing True
-  [gwtc_cwb] GW170608: no — coherent EP 6758.98, lag -6.592 ms, timing True
-  [gwtc_cwb] GW170729: no — coherent EP 2595.47, lag -1.465 ms, timing True
-  [gwtc_cwb] GW170809: no — coherent EP 5467.84, lag 9.521 ms, timing True
-  [gwtc_cwb] GW170814: YES — coherent EP 20216.7, lag 7.568 ms, timing True
-  [gwtc_cwb] GW170817: YES — coherent EP 1.00184e+07, lag -1.465 ms, timing True
-  [gwtc_cwb] GW170818: no — coherent EP 3272.97, lag -7.080 ms, timing True
-  [gwtc_cwb] GW170823: no — coherent EP 5931.11, lag 6.592 ms, timing True
-  [gwtc_cwb] GW190412: YES — coherent EP 20944, lag -1.465 ms, timing True
-  [gwtc_cwb] GW190521: YES — coherent EP 24923.3, lag 2.197 ms, timing True
-  [gwtc_cwb] GW190521_074359: YES — coherent EP 47065.1, lag 5.859 ms, timing True
-  [gwtc_cwb] GW190706_222641: YES — coherent EP 22197, lag 6.592 ms, timing True
-  [gwtc_cwb] GW190814: no — coherent EP 8393.05, lag -2.686 ms, timing True
-  [gwtc_cwb] GW191109_010717: YES — coherent EP 26528.6, lag -2.930 ms, timing True
-  [gwtc_cwb] GW200224_222234: YES — coherent EP 30028.4, lag 3.174 ms, timing True
-  [gwtc_cwb] GW200225_060421: no — coherent EP 3129.09, lag -4.150 ms, timing True
-  [cwb_only] cWB_190607: no — coherent EP 4714.84, lag 9.033 ms, timing True
-  [cwb_only] cWB_190711: no — coherent EP 4524.98, lag -4.395 ms, timing True
-  [cwb_only] cWB_200318: no — coherent EP 1361.73, lag -9.766 ms, timing True
+  [gwtc_cwb] GW150914: YES — coherent EP 11405.5, lag 8.545 ms, timing True
+  [gwtc_cwb] GW151226: no — coherent EP 60.8951, lag 9.277 ms, timing True
+  [gwtc_cwb] GW170104: no — coherent EP 350.912, lag 0.732 ms, timing True
+  [gwtc_cwb] GW170608: no — coherent EP 1802.81, lag -6.104 ms, timing True
+  [gwtc_cwb] GW170729: no — coherent EP 30.0725, lag 7.812 ms, timing True
+  [gwtc_cwb] GW170809: no — coherent EP 26.4762, lag -3.662 ms, timing True
+  [gwtc_cwb] GW170814: no — coherent EP 245.257, lag 7.080 ms, timing True
+  [gwtc_cwb] GW170817: YES — coherent EP 2.96681e+08, lag 1.709 ms, timing True
+  [gwtc_cwb] GW170818: no — coherent EP 214.733, lag -9.277 ms, timing True
+  [gwtc_cwb] GW170823: no — coherent EP 36.1614, lag 9.766 ms, timing True
+  [gwtc_cwb] GW190412: YES — coherent EP 11405.8, lag -1.221 ms, timing True
+  [gwtc_cwb] GW190521: no — coherent EP 361.858, lag 0.000 ms, timing True
+  [gwtc_cwb] GW190521_074359: YES — coherent EP 52642.2, lag -7.812 ms, timing True
+  [gwtc_cwb] GW190706_222641: no — coherent EP 2095.59, lag 0.244 ms, timing True
+  [gwtc_cwb] GW190814: no — coherent EP 1368.61, lag 8.545 ms, timing True
+  [gwtc_cwb] GW191109_010717: YES — coherent EP 12169.2, lag 2.197 ms, timing True
+  [gwtc_cwb] GW200224_222234: no — coherent EP 3688.15, lag 2.441 ms, timing True
+  [gwtc_cwb] GW200225_060421: no — coherent EP 33.608, lag 0.732 ms, timing True
+  [cwb_only] cWB_190607: no — coherent EP 117.928, lag -0.732 ms, timing True
+  [cwb_only] cWB_190711: no — coherent EP 759.026, lag 10.010 ms, timing False
+  [cwb_only] cWB_200318: no — coherent EP 91.453, lag -9.521 ms, timing True
 
 How to read:
 - gwtc_cwb: published GWTC events also reported by cWB documentation.
