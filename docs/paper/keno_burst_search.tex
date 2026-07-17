@@ -24,6 +24,9 @@ bursts without assuming a known waveform shape. A neural network learns to
 predict detector noise from whitened sensor data; that prediction is
 subtracted; and the leftover residual is searched with an energy-based
 statistic, a two-detector timing check, and a simple consistency veto.
+The prototype is delivered as a full-stack system: a PyTorch/FastAPI inference
+service, a Node.js orchestration API with caching, and an Angular command
+center for interactive residual visualization.
 
 On synthetic bursts injected into real LIGO noise, at a 1\% false-alarm rate
 (about one false trigger per hundred noise-only tests), Keno residual search
@@ -35,7 +38,7 @@ from public catalogs, a coherent two-detector residual search recovers 9 of
 
 Keno is meant to complement morphology-specific binary black hole classifiers,
 not replace them. The contribution is a reproducible software path for
-unmodeled residual search.
+unmodeled residual search --- model, API, and interactive tooling included.
 \end{abstract}
 
 \section{Introduction}
@@ -61,19 +64,21 @@ Search methods fall into two complementary families:
 \end{itemize}
 
 Keno belongs to the second family. It adds a generative denoising step before
-the energy search: a neural network predicts instrumental noise $\hat N$ and
-forms a cleaned residual
+the energy search: a neural network predicts instrumental noise $\hat{N}$ and
+forms the residual
 \begin{equation}
-S_{\mathrm{clean}} = S_{\mathrm{raw}} - \hat N.
+R = S_{\mathrm{raw}} - \hat{N}.
 \end{equation}
-The residual is then searched with excess power (an STFT peak-energy
-statistic), an H1+L1 lag scan (Hanford and Livingston detectors), and an
-envelope-consistency veto that rejects loud single-detector artifacts
-(\emph{glitches}).
+Throughout this paper, $R$ denotes that residual (sometimes called
+``cleaned strain'' informally). The residual is then searched with excess
+power (an STFT peak-energy statistic), an H1+L1 lag scan (Hanford and
+Livingston detectors), and an envelope-consistency veto that rejects loud
+single-detector artifacts (\emph{glitches}).
 
 Keno was developed as an independent research prototype by a software engineer.
 It is not a LIGO collaboration product and is not presented as a production
-search pipeline.
+search pipeline. Beyond the model, the project includes a runnable stack for
+ingestion, inference, evaluation, and interactive inspection.
 
 \paragraph{Relation to morphology-specific classifiers.}
 Systems such as AresGW~\citep{nousi2023} answer: ``does this segment look like
@@ -101,12 +106,16 @@ rate, relative to (i)~excess power on the unsubtracted strain and
   \item[Excess power] A template-free energy statistic: look for a loud
         time--frequency patch relative to a robust noise floor (here, the
         median STFT power).
-  \item[Residual] What remains after subtracting predicted noise from the
-        input. Ideally background shrinks and a real burst survives.
+  \item[Residual $R$] What remains after subtracting predicted noise
+        $\hat{N}$ from the input $S_{\mathrm{raw}}$. Ideally background
+        shrinks and a real burst survives.
   \item[Glitch] A non-astrophysical detector artifact that can look like a
-        burst in one interferometer.
+        burst in one interferometer. Gravity Spy labels common morphological
+        classes (Blip, Koi Fish, Scattered Light, and others).
   \item[H1 / L1] LIGO Hanford and LIGO Livingston. Requiring both reduces
         single-detector false alarms.
+  \item[GWOSC] Gravitational Wave Open Science Center --- the public HTTP
+        archive from which Keno downloads open strain frames.
 \end{description}
 
 \section{Method}
@@ -118,23 +127,60 @@ windows are $T=4\,\mathrm{s}$ ($N=16\,384$ samples).
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig1_pipeline.png}
-  \caption{Keno detection path: predict noise, subtract, search residual
-  excess power, then check H1+L1 timing consistency with an envelope veto.}
+  \caption{Keno detection path: predict noise $\hat{N}$, form residual
+  $R=S_{\mathrm{raw}}-\hat{N}$, search residual excess power, then check
+  H1+L1 timing consistency with an envelope veto.}
   \label{fig:pipeline}
 \end{figure}
+
+\subsection{Software stack and interactive command center}
+Keno is intentionally a full-stack research system, not only a local training
+script. The architecture has three services:
+\begin{itemize}
+  \item \textbf{ML engine (Python / FastAPI / PyTorch).}
+        Loads the U-Net checkpoint, fetches and whitens strain via
+        \texttt{gwpy}, runs subtraction, and exposes REST endpoints for
+        denoising (\texttt{POST /api/v1/denoise}), single-detector detection
+        (\texttt{POST /api/v1/detect}), and dual-detector coincidence
+        (\texttt{POST /api/v1/detect/coincidence}). Offline evaluation modules
+        (\texttt{app.prove}, injection campaigns, glitch stress, catalog
+        follow-up) share the same residual-search code path as the live API.
+  \item \textbf{Backend orchestrator (Node.js / Express).}
+        Proxies the Angular UI to the ML engine, forwards GWOSC/offline error
+        details, and caches denoise/detect responses in memory. Cold GWOSC
+        downloads can take on the order of 1--3 minutes, so the ML client uses
+        a long inference timeout ($300\,\mathrm{s}$); health checks use a short
+        timeout ($5\,\mathrm{s}$). Repeat requests for the same GPS window
+        typically return from cache in seconds.
+  \item \textbf{Frontend command center (Angular).}
+        An interactive diff viewer for preset catalog events (e.g.\ GW150914)
+        or custom GPS times. It plots three synchronized series --- raw strain,
+        predicted noise $\hat{N}$, and residual $R$ --- and surfaces calibrated
+        blind-search stats (raw vs residual excess power, percent of threshold,
+        H1+L1 coincidence flags). Synthetic validation mode injects a known
+        burst so a developer can verify the subtraction path without a live
+        download.
+\end{itemize}
+Data ingestion from GWOSC is wrapped once in the ML service: open frames are
+fetched around a GPS timestamp, validated for NaN gaps (offline detectors),
+whitened, and returned as arrays. Cached background segments used for training
+and FAR calibration live on disk so evaluation campaigns do not re-download
+the same quiet windows. The point of this stack is reproducibility and
+inspection: a physicist or engineer can run the same residual path from a
+browser or from a CLI prove script.
 
 \subsection{Generative noise model}
 Keno uses a 1D U-Net~\citep{ronneberger2015} with four encoder/decoder stages
 (base width 16 channels, kernel size 9, GELU activations, batch normalization).
 In software terms this is a convolutional autoencoder-style network for 1D
 sequences: it maps whitened strain $S_{\mathrm{raw}}$ to a predicted noise
-waveform $\hat N$. The residual is
+waveform $\hat{N}$. The residual is again
 \begin{equation}
-R = S_{\mathrm{raw}} - \hat N.
+R = S_{\mathrm{raw}} - \hat{N}.
 \end{equation}
 Training uses cached real public LIGO background windows (GWOSC) for H1/L1.
 A residual loss term encourages injected short bursts to survive subtraction
-instead of being absorbed into $\hat N$. A hold-out acceptance check requires
+instead of being absorbed into $\hat{N}$. A hold-out acceptance check requires
 mean normalized recovery error
 $\mathrm{RMS}(R-s)/\mathrm{RMS}(s)<0.15$ on injections with known ground-truth
 signal $s$. The checkpoint used here is frozen as
@@ -231,9 +277,9 @@ noise-only trials:
 Injection campaigns mix short unknown morphologies (sine-Gaussian, ringdown,
 white-noise burst) into cached real LIGO background at equal FAR.
 Additional studies include a glitch stress test on public O3 Gravity Spy
-labels, dual-detector noise coincidence FAR, and a follow-up on published
-GWTC/cWB GPS times (public catalog timestamps). The catalog follow-up is a
-consistency check, not a discovery claim.
+labels~\citep{glitchzoo2021}, dual-detector noise coincidence FAR, and a
+follow-up on published GWTC/cWB GPS times (public catalog timestamps). The
+catalog follow-up is a consistency check, not a discovery claim.
 
 \section{Results}
 
@@ -260,6 +306,35 @@ trials (23 envelope-gated), the coherent EP threshold is $173.1$ at empirical
 joint FAR $0.07\%$, separate from the single-detector residual threshold
 $\approx 4005$.
 
+\subsection{Gravity Spy glitch taxonomy}
+Single-detector subtraction is \emph{not} a reliable glitch killer. On a
+curated O3a Gravity Spy subset (30 analyzed triggers across six labels),
+residual excess power still crossed threshold for $76.7\%$ of glitches
+(23/30), while the single-detector ``kill'' rate (raw trigger that disappears
+after subtraction) was $0/30$. Injected unknown-morphology burst controls on
+the same background were preserved at $40/40$ (residual trigger and
+overlap\,$\ge 0.75$).
+
+Residual survival by Gravity Spy class (fraction that still trigger after
+subtraction; $n=5$ per label in this freeze):
+\begin{itemize}
+  \item \textbf{Scattered Light} --- lowest residual survival ($20\%$).
+        Longer, more noise-like morphology; the U-Net tends to absorb more of
+        it into $\hat{N}$.
+  \item \textbf{Blip} --- moderate survival ($60\%$). Short, chirp-like
+        instrumental transients; partially suppressed, often still loud in
+        $R$.
+  \item \textbf{Tomte} --- high survival ($80\%$).
+  \item \textbf{Koi Fish}, \textbf{Extremely Loud}, \textbf{Whistle} ---
+        residual survival $100\%$ in this sample. These classes are
+        morphologically burst-like; the network preserves them in $R$ much as
+        it preserves astrophysical bursts.
+\end{itemize}
+The practical lesson for the software design is explicit: production defense
+against glitches is multi-detector coincidence and the envelope-timing veto,
+not an expectation that the U-Net will erase Gravity Spy morphologies on a
+single interferometer.
+
 \subsection{Catalog GPS follow-up}
 Production coincidence recovers 9/18 dual-detector catalog events
 (Figure~\ref{fig:followup}). GW170817 is rejected by the envelope veto despite
@@ -283,11 +358,14 @@ target family is known.
 
 Known limitations of this prototype include:
 \begin{itemize}
-  \item weak single-detector glitch rejection; coincidence and the envelope
-        veto do most of that work;
+  \item weak single-detector glitch rejection, especially for burst-like
+        Gravity Spy classes (Koi Fish, Whistle, Extremely Loud); coincidence
+        and the envelope veto do most of that work;
   \item residual over-subtraction risk if training is insufficient, mitigated
         by the recovery-error acceptance check;
   \item incomplete recovery of some catalog candidates in this freeze;
+  \item cold GWOSC downloads dominate end-to-end latency; cache hits are fast,
+        but first-time analysis of a new GPS window is network-bound;
   \item development by a single engineer with a research codebase, without
         collaboration-scale detector characterization or production operations.
 \end{itemize}
@@ -302,14 +380,18 @@ cd ml-engine
 python -m app.evaluation.aresgw_class --train
 python -m app.prove --freeze --freeze-label 2026-07-paper-v1
 \end{verbatim}
+Interactive inspection uses the Angular command center against the Express
+backend and FastAPI ML engine (see repository READMEs).
 
 \section{Conclusion}
 
 Generative noise subtraction followed by template-free residual search can
 recover unknown-morphology bursts at controlled false-alarm rate in a
-reproducible research prototype. Keno is released as a software contribution
-for unmodeled residual search --- complementary to existing BBH classifiers ---
-for audit and extension, not as a finished gravitational-wave pipeline.
+reproducible research prototype. Keno packages that path as runnable software
+--- inference API, orchestration layer, and visual residual diffs --- intended
+as a complementary contribution for unmodeled residual search alongside
+existing BBH classifiers, for audit and extension rather than as a finished
+gravitational-wave pipeline.
 
 \section*{Data availability}
 Code and freeze bundle accompany this manuscript. Large evaluation CSVs are
@@ -333,6 +415,12 @@ O.~Ronneberger, P.~Fischer, and T.~Brox,
 \newblock U-Net: Convolutional networks for biomedical image segmentation,
 \newblock in Medical Image Computing and Computer-Assisted Intervention
 (MICCAI), pp.~234--241, Springer (2015).
+
+\bibitem[Gravity~Spy et~al.(2021)]{glitchzoo2021}
+Gravity Spy Collaboration,
+\newblock Gravity Spy Machine Learning Classifications of LIGO Glitches from
+Observing Runs O1, O2, O3a, and O3b,
+\newblock Zenodo, doi:10.5281/zenodo.5649212 (2021).
 
 \end{thebibliography}
 \end{document}
