@@ -270,6 +270,7 @@ def _build_summary(
                 f"  keno_residual_ep: {thresholds['keno_residual_ep']:.4f}  (excess power on residual)",
                 f"  keno (noise):   {thresholds['keno']:.4f}  (residual RMS ratio)",
                 f"  keno (signal):  {KENO_OVERLAP_THRESHOLD:.4f}  (waveform overlap, eval-only)",
+                f"  aresgw_class:   {thresholds['aresgw_class']:.4f}  (BBH-trained ResNet P(signal))",
                 "",
             ]
         )
@@ -277,7 +278,7 @@ def _build_summary(
     injected = [r for r in records if r["injected"]]
     noise_only = [r for r in records if not r["injected"]]
 
-    for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno_residual_ep", "keno"):
+    for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno_residual_ep", "keno", "aresgw_class"):
         method_injected = [r for r in injected if r["method"] == method]
         if not method_injected and method == "oracle_mf":
             continue
@@ -343,7 +344,14 @@ def _plot_efficiency(
     config: CampaignConfig,
     path: Path,
     *,
-    methods: tuple[str, ...] = ("oracle_mf", "mismatched_mf", "excess_power", "keno_residual_ep", "keno"),
+    methods: tuple[str, ...] = (
+        "oracle_mf",
+        "mismatched_mf",
+        "excess_power",
+        "keno_residual_ep",
+        "keno",
+        "aresgw_class",
+    ),
     title_suffix: str = "",
 ) -> None:
     try:
@@ -354,10 +362,11 @@ def _plot_efficiency(
     fig, ax = plt.subplots(figsize=(9, 5))
     styles = {
         "oracle_mf": ("Oracle MF (true template)", "#3498db", "o--"),
-        "mismatched_mf": ("Mismatched MF (AresGW-like fixed template)", "#e74c3c", "d--"),
+        "mismatched_mf": ("Mismatched MF (fixed template)", "#e74c3c", "d--"),
         "excess_power": ("Excess power on raw (cWB-style)", "#9b59b6", "^-"),
         "keno_residual_ep": ("Keno + excess power on residual", "#27ae60", "s-"),
         "keno": ("Keno overlap (eval-only, needs GT)", "#2ecc71", "x:"),
+        "aresgw_class": ("AresGW-class BBH ResNet (off-template)", "#c0392b", "v--"),
     }
 
     for method in methods:
@@ -482,7 +491,7 @@ def _build_far_sweep_summary(
         injected = [r for r in records if r["injected"]]
         noise_only = [r for r in records if not r["injected"]]
 
-        for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno_residual_ep", "keno"):
+        for method in ("oracle_mf", "mismatched_mf", "excess_power", "keno_residual_ep", "keno", "aresgw_class"):
             method_injected = [r for r in injected if r["method"] == method]
             if not method_injected and method == "oracle_mf":
                 continue
@@ -514,6 +523,7 @@ def _build_far_sweep_summary(
             "- Keno + residual excess power (keno_residual_ep) is the production detection path.",
             "- Keno noise-only FAR uses residual RMS ratio threshold calibrated per target FAR.",
             "- Mismatched MF and excess-power thresholds are calibrated on noise-only trials at each target FAR.",
+            "- AresGW-class is a BBH-trained 1D ResNet (Nousi et al. objective); off-template on unknown morphology.",
             "",
         ]
     )
@@ -542,6 +552,7 @@ def _plot_far_sweep(
         "excess_power": ("Excess power (raw)", "#9b59b6", "^-"),
         "keno_residual_ep": ("Keno + residual EP", "#27ae60", "s-"),
         "keno": ("Keno overlap", "#2ecc71", "x:"),
+        "aresgw_class": ("AresGW-class BBH ResNet", "#c0392b", "v--"),
     }
 
     for ax, far in zip(axes, far_values):

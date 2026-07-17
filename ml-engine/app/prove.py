@@ -210,7 +210,8 @@ Production API: `POST /api/v1/detect` uses these thresholds.
 
 - **keno_residual_ep** — production path: subtract noise, excess power on residual. This is what physicists should trust for blind searches.
 - **keno (overlap)** — eval-only recovery metric; requires knowing the injected waveform. High overlap means the burst survived subtraction.
-- **mismatched_mf** — proxy for fixed-template methods like AresGW on the wrong morphology. Failure here is expected and is the scientific point.
+- **mismatched_mf** — proxy for fixed-template methods on the wrong morphology. Failure here is expected and is the scientific point.
+- **aresgw_class** — BBH-trained 1D ResNet classifier (AresGW-class objective; Nousi et al. 2023). Evaluated off-template on unknown morphologies; not AUTH published weights.
 - **excess_power (raw)** — cWB-style search without subtraction. Keno wins if keno_residual_ep reaches 50% efficiency at lower SNR than raw excess power.
 - **O3 glitch stress** — Gravity Spy instrumental glitches. High residual survival is expected when glitches are burst-like; production defense is multi-detector coincidence, not single-detector kill rate.
 - **Production coincidence timing** — gated on best coherent lag within ±max_lag_ms and envelope peak Δt within ±max_envelope_dt_ms (glitch-contamination veto). Large envelope mismatch rejects single-IFO glitch recoveries (e.g. GW170817 L1). Dual-IFO coherent EP uses a separate envelope-gated noise threshold from single-detector residual EP.

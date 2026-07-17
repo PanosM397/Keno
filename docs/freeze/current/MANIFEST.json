@@ -1,20 +1,20 @@
 {
-  "label": "2026-07-17-finetuned",
-  "frozen_at_utc": "2026-07-17T00:38:19Z",
+  "label": "2026-07-paper-v1",
+  "frozen_at_utc": "2026-07-17T08:33:08Z",
   "hypothesis": "S_clean = S_raw - N_predicted; template-free excess power on residual",
   "checkpoint": {
     "path": "checkpoints/unet_denoiser.pt",
-    "sha256": "962ffc64162f5ae249ffae69f1b8d94453d69f12ccd5489c97eac831dbf06f54",
+    "sha256": "55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a",
     "loaded_at_freeze": true
   },
   "environment": {
-    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "platform": "Windows-10-10.0.26200-SP0",
     "packages": {
-      "python": "3.14.2",
-      "torch": "2.13.0",
-      "numpy": "2.5.1",
+      "python": "3.11.9",
+      "torch": "2.6.0+cu124",
+      "numpy": "2.4.6",
       "gwpy": "4.0.1",
-      "scipy": "1.18.0",
+      "scipy": "1.17.1",
       "fastapi": "0.139.0"
     }
   },
@@ -30,145 +30,145 @@
   "artifacts": {
     "checkpoint": {
       "path": "checkpoints/unet_denoiser.pt",
-      "sha256": "962ffc64162f5ae249ffae69f1b8d94453d69f12ccd5489c97eac831dbf06f54",
-      "bytes": 1993075,
+      "sha256": "55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a",
+      "bytes": 1994074,
       "copied": false,
       "note": "gitignored; verify locally with sha256sum / Get-FileHash"
     },
     "calibration.json": {
       "path": "data/evaluation/calibration.json",
-      "sha256": "83672fe0c5f33c5a9a4a204a64fa1954dee0b7da57a11d10c2e4ac9177098553",
-      "bytes": 583,
+      "sha256": "540a53bf0ef4afbd15f9d73cec186b46ee46d3a0d0b70661e443b7e251977867",
+      "bytes": 972,
       "copied": true,
       "freeze_path": "calibration.json"
     },
     "summary.txt": {
       "path": "data/evaluation/summary.txt",
-      "sha256": "67ffebb7c05c37b80bd667c9b2f1ac01275d11cb97fe20a1b5063ff3dd4b2012",
-      "bytes": 1263,
+      "sha256": "a571cd6d2eec68e88a599f3a0a9d8e1a5a6ab0bf77c623564f87eb31a817b959",
+      "bytes": 1442,
       "copied": true,
       "freeze_path": "summary.txt"
     },
     "far_sweep_summary.txt": {
       "path": "data/evaluation/far_sweep_summary.txt",
-      "sha256": "6d355293c608fdfed54146561320864ee784afc151b716314a28e8603b2f22da",
-      "bytes": 1502,
+      "sha256": "f7b72c3d4af92845b1cf61eff7ff585404afa88604fa30e7f7ca4d82335caf1d",
+      "bytes": 2161,
       "copied": true,
       "freeze_path": "far_sweep_summary.txt"
     },
     "morphology_breakdown.txt": {
       "path": "data/evaluation/morphology_breakdown.txt",
-      "sha256": "9b93de6bebcbc65a2896c27b9d69c657d977219d0367ef146cce55cb92b2cda1",
-      "bytes": 231,
+      "sha256": "4a01badf16e9dfcf1f20dee71de365ccbdff8bcd7efdab9605d586624fce607f",
+      "bytes": 239,
       "copied": true,
       "freeze_path": "morphology_breakdown.txt"
     },
     "coincidence_summary.txt": {
       "path": "data/evaluation/coincidence_summary.txt",
-      "sha256": "cd79974c5c40a83a8c0fffa43ac6137baaedb33a490b24a16ca7965d3d218ae6",
-      "bytes": 1296,
+      "sha256": "ebace619ee3afef344bd72f99f347fc1184ef77613daef1059bd7810274de47e",
+      "bytes": 1337,
       "copied": true,
       "freeze_path": "coincidence_summary.txt"
     },
     "coincidence_known_events.csv": {
       "path": "data/evaluation/coincidence_known_events.csv",
-      "sha256": "69ccab6225caf4da75242564878b86a9683bd6f7ca5b48e32ea3274aa54c1ffa",
-      "bytes": 653,
+      "sha256": "46a3d3aa9f72220a1f8095684d340a1b9dfd7ecaec0e50436cb632a6415c46fe",
+      "bytes": 668,
       "copied": true,
       "freeze_path": "coincidence_known_events.csv"
     },
     "glitch_stress_summary.txt": {
       "path": "data/evaluation/glitch_stress_summary.txt",
-      "sha256": "7549e9a08c21205be3758e0419313a6c1400a8074d23af028b1343911e5f422a",
-      "bytes": 1356,
+      "sha256": "3ce9d1179cd4226d4275190c2462af3a1d632f2c01fe936b1ac1aaef1a99c127",
+      "bytes": 1386,
       "copied": true,
       "freeze_path": "glitch_stress_summary.txt"
     },
     "glitch_stress_trials.csv": {
       "path": "data/evaluation/glitch_stress_trials.csv",
-      "sha256": "7da8343cf1778a5a0787d7e7de6de5fd031e836a869984dea94c845367ae4358",
-      "bytes": 2951,
+      "sha256": "3cecfa5e4d0b026d47d1f6decd91904db5ff012b8e6dae6391ff3c807174e10a",
+      "bytes": 2982,
       "copied": true,
       "freeze_path": "glitch_stress_trials.csv"
     },
     "glitch_stress_burst_controls.csv": {
       "path": "data/evaluation/glitch_stress_burst_controls.csv",
-      "sha256": "ca72c33f98c371a04e337dbb2b70156897f249f413dca0769d01b7907d64ac73",
-      "bytes": 3070,
+      "sha256": "6d1fc16f19c05347f879f157d75026bffe88c86a9a4e2597300d042d369fc6f2",
+      "bytes": 3111,
       "copied": true,
       "freeze_path": "glitch_stress_burst_controls.csv"
     },
     "cwb_followup_summary.txt": {
       "path": "data/evaluation/cwb_followup_summary.txt",
-      "sha256": "15ddf730487f6aab758174721af07ea45fb5ce2d0db72e4f824800e513e8edae",
-      "bytes": 3166,
+      "sha256": "41ff4a6cb3f5debe2c0386a7e46508a213bda4c6f857ef4320e6102cda528313",
+      "bytes": 6470,
       "copied": true,
       "freeze_path": "cwb_followup_summary.txt"
     },
     "cwb_followup_trials.csv": {
       "path": "data/evaluation/cwb_followup_trials.csv",
-      "sha256": "faa5d1106ac5105350ce547df29145993084f54295bef04f465ccd61547ef3de",
-      "bytes": 4498,
+      "sha256": "f6df79ce24623275142c46226fb71cb1398e6a7e0ad1f742f39af29cb113af3a",
+      "bytes": 4618,
       "copied": true,
       "freeze_path": "cwb_followup_trials.csv"
     },
     "efficiency_vs_snr_unknown.png": {
       "path": "data/evaluation/efficiency_vs_snr_unknown.png",
-      "sha256": "38f0f5892d85ed697dabe969a45695d9ea4ee99fde4048912685f7bb02551db0",
-      "bytes": 95030,
+      "sha256": "988c3519d9e28874dba1e26a6b1f5f754a5770165f0c5ff0c0dd0044531f1b41",
+      "bytes": 102109,
       "copied": true,
       "freeze_path": "figures/efficiency_vs_snr_unknown.png"
     },
     "efficiency_vs_snr_by_far.png": {
       "path": "data/evaluation/efficiency_vs_snr_by_far.png",
-      "sha256": "a6aacc45329967b6e3a00dcd67e10efa63acc61c3c719b3c2c7ec025aef771e5",
-      "bytes": 137591,
+      "sha256": "d52225c31a02ccc830d476c39529c2c56c1d4c0b46bef66ed03727af88a41a51",
+      "bytes": 127974,
       "copied": true,
       "freeze_path": "figures/efficiency_vs_snr_by_far.png"
     },
     "morphology_breakdown.png": {
       "path": "data/evaluation/morphology_breakdown.png",
-      "sha256": "4493a6892f4d5864942136c16da9b149877b0dc5201112d8b759835156730cd2",
-      "bytes": 84567,
+      "sha256": "84c29480c9ebb0fbffa9d980b87ed1844cb8a0f6a5ecd77e5c162b7e3df4ec26",
+      "bytes": 57396,
       "copied": true,
       "freeze_path": "figures/morphology_breakdown.png"
     },
     "campaign_results.csv": {
       "path": "data/evaluation/campaign_results.csv",
-      "sha256": "a6c7fcf87c3b6b212ad63dd1be70524c39ab5c69f82d003f05f7457ed0989313",
-      "bytes": 1487192,
+      "sha256": "5b30280f51173a5e65d6da6044f34c302384a95107d6aa83bb89de22815bc9ef",
+      "bytes": 253154,
       "copied": false
     },
     "far_sweep_results.csv": {
       "path": "data/evaluation/far_sweep_results.csv",
-      "sha256": "371d39692b8ce44f22a6c381605d563eadda26ed584ba5c0b3211d8f5777170f",
-      "bytes": 4471489,
+      "sha256": "9e70f405ed5806c183dbe2c594a4d9f45fa17069be623061374c506097efa8a8",
+      "bytes": 761863,
       "copied": false
     },
     "coincidence_noise_trials.csv": {
       "path": "data/evaluation/coincidence_noise_trials.csv",
-      "sha256": "db0ed2a3104444a0833aee8037223f5a3b8f032d0419b04f76df94c50579e373",
-      "bytes": 5563,
+      "sha256": "1d59dc4d15d5efb8f30b701fcd8befddf04edd3089477626dc1e88f778b230a3",
+      "bytes": 23185,
       "copied": false
     },
     "catalogs/o3_glitch_subset.csv": {
       "path": "ml-engine/catalogs/o3_glitch_subset.csv",
-      "sha256": "b9a042838ced3e57af11cbce5a1c7bcc197fd601160bb0a7e8157055071f5156",
-      "bytes": 5453,
+      "sha256": "1f78f6d9411f18bd9aac3a3db51244669a0af9c471f8542618bb026fa40d9b2c",
+      "bytes": 5514,
       "copied": true,
       "freeze_path": "o3_glitch_subset.csv"
     },
     "catalogs/cwb_followup_events.csv": {
       "path": "ml-engine/catalogs/cwb_followup_events.csv",
-      "sha256": "8d9ae53439d8088d309762e0dff6c4d806cc1861b54c74686936bab76da90610",
-      "bytes": 1603,
+      "sha256": "02b045a0cc372c3b7fa1cd2e3cbd424493be93d0f4a56843cfdac8a625b6dc08",
+      "bytes": 1625,
       "copied": true,
       "freeze_path": "cwb_followup_events.csv"
     },
     "docs/SCIENTIFIC_VALIDATION.md": {
       "path": "docs/SCIENTIFIC_VALIDATION.md",
-      "sha256": "bda2587b38a06cdb4b1524ffa9ff265a6739c60d1871e2244e1c0755dcf8ef84",
-      "bytes": 12923,
+      "sha256": "9cfc824386de28b347880a989d9b9cfb88dbd411c3591a6a410d0f77890b3923",
+      "bytes": 16514,
       "copied": true,
       "freeze_path": "SCIENTIFIC_VALIDATION.md"
     }

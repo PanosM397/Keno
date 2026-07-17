@@ -1,0 +1,172 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+
+\title{Generative denoising for template-free gravitational-wave burst search}
+\author{
+  % Authors TBD
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Binary black hole (BBH) deep classifiers such as AresGW are optimized for
+compact-binary morphologies in a fixed mass range. Unmodeled transients
+(e.g.\ core-collapse supernovae and other short bursts) lie outside that
+training objective. We present Keno, a generative residual-search pipeline that
+learns detector noise, subtracts the predicted noise from whitened strain, and
+searches the residual with template-free excess power, dual-interferometer
+coherent lag scans, and an envelope-consistency glitch veto.
+On unknown-morphology injections in real LIGO noise at 1\% false-alarm rate,
+Keno residual excess power saturates near 100\% efficiency across SNR\,2--12,
+while a BBH-trained AresGW-class ResNet plateaus near 60--80\% and mismatched
+matched filtering remains near 20\%.
+On published GWTC/cWB GPS times, coherent residual coincidence recovers 9/18
+dual-detector events after vetoing the known L1 glitch contamination of GW170817.
+Keno is complementary to AresGW: it does not claim superior BBH sensitive
+distance in the AresGW mass range.
+\end{abstract}
+
+\section{Introduction}
+
+Matched filtering and BBH-trained deep networks dominate compact-binary
+searches~\citep{nousi2023,koloniari2025}.
+AresGW~\citep{nousi2023} uses a deep residual network with adaptive
+normalization to classify one-second segments as BBH or noise, achieving
+competitive sensitive distances in its training mass window.
+That success does not transfer to morphologies absent from training.
+
+Unmodeled burst searches (e.g.\ coherent WaveBurst) ask a different question:
+whether excess coherent power remains after accounting for detector noise.
+Keno follows that spirit with a generative step: a 1D U-Net predicts
+instrumental noise $N$, forming
+\begin{equation}
+S_{\mathrm{clean}} = S_{\mathrm{raw}} - \hat N,
+\end{equation}
+then applies template-free excess power on $S_{\mathrm{clean}}$.
+
+\paragraph{Claim scope.}
+We claim superiority on \emph{unknown-morphology} bursts at controlled false-alarm
+rate. We do \emph{not} claim that Keno supersedes AresGW on BBH detection.
+
+\section{Method}
+
+\subsection{Generative noise subtraction}
+Keno trains a U-Net on real GWOSC background windows to predict noise.
+Inference subtracts $\hat N$ from whitened strain. Phase-1 validation requires
+mean normalized recovery error $<0.15$ on held-out injections.
+
+\subsection{Single-detector residual excess power}
+Peak STFT excess power on the residual is calibrated on noise-only windows at
+target FAR (artifact-trimmed upper tail). This threshold governs single-IFO
+triggers.
+
+\subsection{Coherent dual-IFO search}
+For H1+L1, Keno scans relative lag within $\pm 10\,\mathrm{ms}$ and polarity,
+forms $(h_1 \pm h_2)/\sqrt{2}$, and computes coherent excess power.
+Detection requires (i)~coherent EP above an \emph{envelope-gated} dual-IFO
+threshold, (ii)~best lag inside the light-travel window, and
+(iii)~independent residual envelope peaks agreeing within
+$\pm 50\,\mathrm{ms}$ (glitch-contamination veto).
+
+\subsection{Baselines}
+\begin{itemize}
+  \item Oracle matched filter (upper bound; requires true waveform).
+  \item Mismatched matched filter (fixed sine-Gaussian decoy).
+  \item Raw excess power (cWB-style, no subtraction).
+  \item AresGW-class: 1D ResNet trained only on BBH-like chirps in the same
+        noise cache, scored off-template on unknown bursts (AresGW training
+        objective; not AUTH published weights).
+\end{itemize}
+
+\section{Experiments}
+
+Injection campaigns use cached real LIGO background with mixed unknown
+morphologies (sine-Gaussian, ringdown, white-noise burst) at equal FAR.
+We also report O3 Gravity Spy glitch stress, dual-IFO noise coincidence FAR,
+and a GWTC/cWB GPS follow-up consistency check (not a discovery claim).
+
+\section{Results}
+
+\subsection{Unknown-morphology efficiency}
+Figure~\ref{fig:eff} shows Keno residual EP at 100\% efficiency across
+SNR\,2--12 at 1\% FAR. The AresGW-class BBH ResNet reaches 50\% efficiency but
+plateaus near 60--80\% (off-template leakage without saturation). Mismatched
+matched filtering remains near $\sim$20\% and never reaches 50\% efficiency.
+
+\subsection{Coherent calibration}
+Envelope gating removes most dual-IFO noise outliers. With 1500 noise trials
+(23 envelope-gated), the coherent EP threshold is $173.1$ at empirical joint
+FAR $0.07\%$, separate from the single-IFO residual threshold $\approx 4005$.
+
+\subsection{GWTC/cWB follow-up}
+Production coincidence recovers 9/18 GWTC/cWB dual-IFO events
+(Table~\ref{tab:followup}). GW170817 is rejected by the envelope veto despite
+huge coherent EP (L1 glitch). cWB-only candidates remain 0/3.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/fig2_efficiency.png}
+  \caption{Detection efficiency vs injected SNR at 1\% FAR on unknown morphology.
+  AresGW-class is evaluated off-template.}
+  \label{fig:eff}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/fig5_followup.png}
+  \caption{Follow-up coherent EP by event. Green: production YES; orange: envelope veto; gray: miss.}
+  \label{fig:followup}
+\end{figure}
+
+\section{Discussion}
+
+Keno and AresGW answer different questions. Use AresGW (or matched filtering)
+for BBH CBC in-band; use Keno when the waveform family is unknown.
+Limitations include near-zero single-IFO glitch kill rate (coincidence and
+envelope veto are the defense), residual over-subtraction risk (mitigated by
+fine-tuning and validation), and incomplete recovery of cWB-only candidates.
+
+\section{Reproducibility}
+
+Frozen artifacts live under \texttt{docs/freeze/current/} with checkpoint SHA256
+\texttt{55ce7637\ldots} (label \texttt{2026-07-paper-v1}).
+Reproduce with:
+\begin{verbatim}
+cd ml-engine
+python -m app.evaluation.aresgw_class --train
+python -m app.prove --freeze --freeze-label 2026-07-paper-v1
+\end{verbatim}
+
+\section{Conclusion}
+
+Generative noise subtraction with template-free coherent residual search
+recovers unknown-morphology bursts where BBH-trained classifiers fail, at
+controlled false-alarm rate, without claiming BBH superiority over AresGW.
+
+\section*{Data availability}
+Code and freeze bundle accompany this manuscript. Large evaluation CSVs are
+hashed in the freeze manifest.
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Nousi et~al.(2023)]{nousi2023}
+P.~Nousi et~al.,
+\newblock Deep residual networks for gravitational wave detection,
+\newblock Phys.\ Rev.\ D \textbf{108}, 024022 (2023).
+
+\bibitem[Koloniari et~al.(2025)]{koloniari2025}
+A.~E.~Koloniari et~al.,
+\newblock New gravitational wave discoveries enabled by machine learning,
+\newblock Mach.\ Learn.: Sci.\ Technol.\ (2025).
+
+\end{thebibliography}
+\end{document}

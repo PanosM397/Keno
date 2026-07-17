@@ -1,6 +1,6 @@
 Keno morphology breakdown (detection efficiency @ SNR 2.0)
 
-unknown: 93.3% [88.2%, 96.3%] (n=150)
-sine_gaussian: 100.0% [97.5%, 100.0%] (n=150)
-ringdown: 80.0% [72.9%, 85.6%] (n=150)
-white_noise_burst: 96.0% [91.5%, 98.2%] (n=150)
+unknown: 100.0% [95.1%, 100.0%] (n=75)
+sine_gaussian: 100.0% [95.1%, 100.0%] (n=75)
+ringdown: 100.0% [95.1%, 100.0%] (n=75)
+white_noise_burst: 100.0% [95.1%, 100.0%] (n=75)

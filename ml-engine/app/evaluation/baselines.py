@@ -115,6 +115,18 @@ def keno_recovery(
     )
 
 
+def aresgw_class_classifier(raw: np.ndarray) -> MethodResult:
+    """BBH-trained AresGW-class ResNet score (P(signal)); off-morphology contrast."""
+    from app.evaluation.aresgw_class import score_aresgw_class
+
+    return MethodResult(
+        method="aresgw_class",
+        residual=raw,
+        detection_stat=score_aresgw_class(raw),
+        higher_is_detection=True,
+    )
+
+
 def evaluate_trial_raw(trial) -> list[dict]:
     """Run all methods and return stats without applying FAR thresholds."""
     method_results: list[MethodResult] = [
@@ -122,6 +134,7 @@ def evaluate_trial_raw(trial) -> list[dict]:
         excess_power_search(trial.raw),
         keno_subtracted_excess_power(trial.raw),
         keno_recovery(trial.raw, trial.signal if trial.target_snr > 0.0 else None),
+        aresgw_class_classifier(trial.raw),
     ]
     if trial.target_snr > 0.0:
         method_results.insert(0, oracle_matched_filter(trial.raw, trial.template))
@@ -209,6 +222,7 @@ def calibrate_method_thresholds(
         keno_subtracted_excess_power(trial.raw).detection_stat for trial in noise_trials
     ]
     keno_stats = [keno_recovery(trial.raw, None).detection_stat for trial in noise_trials]
+    aresgw_stats = [aresgw_class_classifier(trial.raw).detection_stat for trial in noise_trials]
 
     percentile = (1.0 - target_false_alarm_rate) * 100.0
     return {
@@ -220,4 +234,5 @@ def calibrate_method_thresholds(
             artifact_trim_fraction=KENO_RESIDUAL_EP_ARTIFACT_TRIM,
         ),
         "keno": float(np.percentile(keno_stats, percentile)),
+        "aresgw_class": float(np.percentile(aresgw_stats, percentile)),
     }

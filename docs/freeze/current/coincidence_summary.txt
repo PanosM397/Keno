@@ -2,26 +2,26 @@ Keno multi-detector coincidence summary
 
 Known catalog events:
 [GW150914] GPS 1126259462.4 — detectors: H1, L1
-  H1: raw=False residual=True (raw EP 71.05, res EP 18642.9)
-  L1: raw=False residual=False (raw EP 32.47, res EP 357.4)
+  H1: raw=False residual=True (raw EP 71.05, res EP 358720.1)
+  L1: raw=False residual=False (raw EP 32.47, res EP 833.3)
   Raw coincidence: no
-  Coherent lag-scan (±10 ms): EP 11405.5, lag +8.5 ms, polarity -1, envelope peak dt -27.6 ms (gate ±50 ms: ok), timing ok
+  Coherent lag-scan (±10 ms): EP 192882.0, lag +7.8 ms, polarity -1, envelope peak dt -7.6 ms (gate ±50 ms: ok), timing ok
   Independent residual coincidence: no | Production residual coincidence: yes
 
 [GW170817] GPS 1187008882.4 — detectors: H1, L1
-  H1: raw=False residual=False (raw EP 19.90, res EP 44.0)
-  L1: raw=True residual=True (raw EP 370376.09, res EP 1842794534.9)
+  H1: raw=False residual=False (raw EP 19.50, res EP 27.5)
+  L1: raw=True residual=True (raw EP 370376.09, res EP 2368548522.0)
   Raw coincidence: no
-  Coherent lag-scan (±10 ms): EP 288540724.8, lag +0.2 ms, polarity +1, envelope peak dt -2101.8 ms (gate ±50 ms: VETO), timing ok
+  Coherent lag-scan (±10 ms): EP 381638150.5, lag +7.3 ms, polarity +1, envelope peak dt +233.2 ms (gate ±50 ms: VETO), timing ok
   Independent residual coincidence: no | Production residual coincidence: no
 
 [GW190425] GPS 1240215503.0 — detectors: L1
-  L1: raw=False residual=False (raw EP 19.62, res EP 27.0)
+  L1: raw=False residual=False (raw EP 19.62, res EP 29.9)
   Raw coincidence: no
   Production residual coincidence: no
   Note: H1 was offline — single-detector sanity check only.
 
-Noise-only H1+L1 coincidence (50 trials, cached dual-detector GPS):
+Noise-only H1+L1 coincidence (200 trials, cached dual-detector GPS):
   Raw excess-power coincidence rate: 0.0%
   Independent residual coincidence rate: 0.0%
-  Production coherent residual coincidence rate: 2.0%
+  Production coherent residual coincidence rate: 0.0%
