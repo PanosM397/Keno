@@ -36,7 +36,7 @@ async function getDenoisedStrain(req, res, next) {
 
 async function getEventCatalog(req, res, next) {
   try {
-    const { catalog } = req.query;
+    const catalog = req.query.catalog || 'GWTC';
     const cached = cacheService.get('event-catalog', { catalog });
     if (cached) {
       return res.json({ ...cached, cached: true });

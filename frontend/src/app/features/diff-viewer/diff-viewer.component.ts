@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { ChartPanelComponent } from './chart-panel/chart-panel.component';
 import { BackendHealth, StrainApiService } from '../../core/services/strain-api.service';
 import {
+  CatalogEventSummary,
   CoincidenceResult,
   Detector,
   DenoisedStrainResult,
@@ -12,6 +13,25 @@ import {
   SeriesPoint,
   SyntheticStrategy,
 } from '../../core/models/strain.models';
+
+const CATALOG_OPTIONS = [
+  { id: 'GWTC', label: 'All GWTC' },
+  { id: 'GWTC-3-confident', label: 'GWTC-3 confident' },
+  { id: 'GWTC-2.1-confident', label: 'GWTC-2.1 confident' },
+  { id: 'GWTC-1-confident', label: 'GWTC-1 confident' },
+] as const;
+
+function pickPreferredDetector(detectors: Detector[]): Detector {
+  if (detectors.includes('H1')) return 'H1';
+  if (detectors.includes('L1')) return 'L1';
+  if (detectors.includes('V1')) return 'V1';
+  return 'H1';
+}
+
+function coincidenceDetectorsFromPublicStrain(detectors: Detector[]): Detector[] {
+  const pair = (['H1', 'L1'] as Detector[]).filter((detector) => detectors.includes(detector));
+  return pair.length >= 2 ? pair : [];
+}
 
 interface LoadingPhase {
   afterSeconds: number;
@@ -83,6 +103,8 @@ interface KnownEvent {
   /** Detectors for coherent coincidence; omit to default H1+L1. Empty = skip. */
   coincidenceDetectors?: Detector[];
   coincidenceNote?: string;
+  /** Plain-language tip shown while this preset GPS is selected. */
+  tip: string;
 }
 
 /** Curated demo presets (not loaded from GWOSC /events). */
@@ -93,6 +115,8 @@ const KNOWN_EVENTS: KnownEvent[] = [
     subtitle: 'Historic 2015 discovery',
     gpsTime: 1126259462.4,
     detector: 'H1',
+    tip:
+      'Look for a residual spike near t=0. Production Yes with Independent No is normal: Hanford residual is loud; Livingston alone stays below the single-detector gate; the coherent scan still passes.',
   },
   {
     id: 'GW170817',
@@ -100,6 +124,8 @@ const KNOWN_EVENTS: KnownEvent[] = [
     subtitle: 'Also seen as light in the sky',
     gpsTime: 1187008882.4,
     detector: 'H1',
+    tip:
+      'Expect an envelope veto, not a dual-IFO detection. Livingston has a huge glitch; coherent EP can look enormous while peak timing fails the glitch gate.',
   },
   {
     id: 'GW190425',
@@ -111,11 +137,32 @@ const KNOWN_EVENTS: KnownEvent[] = [
     coincidenceDetectors: [],
     coincidenceNote:
       'H1 was offline for GW190425 — dual-detector coincidence is not valid. Use L1 single-detector residual search only (matches the freeze).',
+    tip:
+      'Hanford was offline. Use Livingston only — dual-detector coincidence is skipped so the UI cannot invent a false H1+L1 trigger.',
   },
 ];
 
 function knownEventForGps(gpsTime: number): KnownEvent | undefined {
   return KNOWN_EVENTS.find((event) => Math.abs(event.gpsTime - gpsTime) < 0.05);
+}
+
+/** Argmax of short boxcar energy on |residual|; returns time in seconds from event. */
+function findResidualPeakTimeSeconds(points: SeriesPoint[], boxcar = 8): number | null {
+  if (points.length < boxcar + 2) return null;
+  let bestIndex = 0;
+  let bestEnergy = -1;
+  for (let i = 0; i <= points.length - boxcar; i += 1) {
+    let energy = 0;
+    for (let j = 0; j < boxcar; j += 1) {
+      const value = points[i + j].value;
+      energy += value * value;
+    }
+    if (energy > bestEnergy) {
+      bestEnergy = energy;
+      bestIndex = i + Math.floor(boxcar / 2);
+    }
+  }
+  return points[bestIndex]?.time ?? null;
 }
 
 function toSeries(
@@ -213,6 +260,7 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
   private inFlight: Subscription | null = null;
 
   readonly knownEvents = KNOWN_EVENTS;
+  readonly catalogOptions = CATALOG_OPTIONS;
 
   readonly gpsTime = signal(KNOWN_EVENTS[0].gpsTime);
   readonly detector = signal<Detector>('H1');
@@ -221,8 +269,21 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
   readonly syntheticMode = signal(false);
   readonly syntheticStrategy = signal<SyntheticStrategy>('oracle');
 
+  readonly catalogId = signal<string>(CATALOG_OPTIONS[0].id);
+  readonly catalogEvents = signal<CatalogEventSummary[]>([]);
+  readonly catalogQuery = signal('');
+  readonly catalogLoading = signal(false);
+  readonly catalogSelecting = signal(false);
+  readonly catalogError = signal<string | null>(null);
+  readonly catalogSelectWarning = signal<string | null>(null);
+  readonly selectedCatalogName = signal<string | null>(null);
+  /** From GWOSC strain metadata; null = use preset/default H1+L1. */
+  readonly coincidenceDetectorsOverride = signal<Detector[] | null>(null);
+
   readonly loading = signal(false);
   readonly coincidenceLoading = signal(false);
+  readonly cacheClearing = signal(false);
+  readonly cacheMessage = signal<string | null>(null);
   readonly elapsedSeconds = signal(0);
   readonly error = signal<string | null>(null);
   readonly coincidenceWarning = signal<string | null>(null);
@@ -256,6 +317,83 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
     const result = this.result();
     if (!result?.groundTruthSignal?.length) return [];
     return toSeries(result.groundTruthSignal, result.sampleRate, result.t0, result.gpsTime);
+  });
+
+  readonly markEventTime = computed(() => {
+    const result = this.result();
+    return !!result && !result.synthetic;
+  });
+
+  readonly residualPeakTimeSeconds = computed(() => {
+    const result = this.result();
+    if (!result || result.synthetic) return null;
+    return findResidualPeakTimeSeconds(this.residualSeries());
+  });
+
+  readonly selectedEventTip = computed(() => {
+    if (this.syntheticMode()) {
+      return 'Synthetic mode buries a known burst in fake noise. Compare Step 3 (residual) to Step 4 (ground truth) — they should match in oracle mode.';
+    }
+    const known =
+      knownEventForGps(this.gpsTime()) ?? this.knownEvents.find((e) => e.id === this.selectedEventId());
+    if (known?.tip) return known.tip;
+    const catalogName = this.selectedCatalogName();
+    if (catalogName) {
+      return (
+        `Catalog event ${catalogName}. Charts use the observatory in Advanced; ` +
+        `coincidence runs only when both H1 and L1 have public strain for this GPS.`
+      );
+    }
+    return null;
+  });
+
+  readonly filteredCatalogEvents = computed(() => {
+    const query = this.catalogQuery().trim().toLowerCase();
+    const events = this.catalogEvents();
+    const filtered = query
+      ? events.filter(
+          (event) =>
+            event.name.toLowerCase().includes(query) || String(event.gpsTime).includes(query),
+        )
+      : events;
+    return filtered.slice(0, 40);
+  });
+
+  readonly showRetryCoincidence = computed(
+    () =>
+      !!this.coincidenceWarning() &&
+      !!this.result() &&
+      !this.result()?.synthetic &&
+      !this.coincidenceLoading() &&
+      !this.loading(),
+  );
+
+  readonly coincidenceDetectorRows = computed(() => {
+    const coincidence = this.coincidence();
+    const detection = this.detectionStats();
+    if (!coincidence) return [];
+    const residualThreshold = detection?.thresholds.excessPowerResidual ?? null;
+    return coincidence.detectors.map((row) => {
+      const residualEp = row.residualExcessPower;
+      const residualPct =
+        residualThreshold !== null && residualEp !== null && residualEp !== undefined
+          ? this.thresholdPercent(residualEp, residualThreshold)
+          : null;
+      return { ...row, residualThresholdPercent: residualPct };
+    });
+  });
+
+  readonly residualAdvantageLine = computed(() => {
+    const detection = this.detectionStats();
+    if (!detection) return null;
+    if (detection.residualDetected && !detection.rawDetected) {
+      return (
+        `Advantage: residual is ${this.formatThresholdPercent(detection.residualExcessPower, detection.thresholds.excessPowerResidual)} ` +
+        `while raw is only ${this.formatThresholdPercent(detection.rawExcessPower, detection.thresholds.excessPowerRaw)} — ` +
+        `subtraction revealed excess power that a raw-strain search missed.`
+      );
+    }
+    return null;
   });
 
   readonly activeLoadingPhases = computed(() =>
@@ -582,6 +720,65 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
     this.coincidence.set(null);
     this.error.set(null);
     this.coincidenceWarning.set(null);
+    this.cacheMessage.set(null);
+  }
+
+  retryCoincidence(): void {
+    const result = this.result();
+    if (!result || result.synthetic || this.coincidenceLoading()) return;
+
+    const { detectors: coincidenceDetectors, note } = this.resolveCoincidenceDetectors(result.gpsTime);
+    if (coincidenceDetectors.length < 2) {
+      this.coincidenceWarning.set(
+        note ?? 'Dual-detector coincidence is not available for this GPS time.',
+      );
+      return;
+    }
+
+    const detectorLabel = coincidenceDetectors.join('+');
+    this.inFlight?.unsubscribe();
+    this.coincidenceWarning.set(null);
+    this.coincidenceLoading.set(true);
+    this.startTimer();
+
+    this.inFlight = this.strainApi
+      .getStrainCoincidence({
+        gpsTime: result.gpsTime,
+        duration: this.duration(),
+        detectors: coincidenceDetectors,
+      })
+      .subscribe({
+        next: (coincidence) => {
+          this.coincidence.set(coincidence);
+          this.coincidenceLoading.set(false);
+          this.stopTimer();
+          this.refreshHealth();
+        },
+        error: (err) => {
+          this.coincidenceWarning.set(
+            `${detectorLabel} coincidence unavailable — ${this.toFriendlyCoincidenceError(err, detectorLabel)}`,
+          );
+          this.coincidenceLoading.set(false);
+          this.stopTimer();
+          this.refreshHealth();
+        },
+      });
+  }
+
+  clearBackendCache(): void {
+    if (this.cacheClearing()) return;
+    this.cacheClearing.set(true);
+    this.cacheMessage.set(null);
+    this.strainApi.clearStrainCache().subscribe({
+      next: () => {
+        this.cacheClearing.set(false);
+        this.cacheMessage.set('Backend strain cache cleared. Next Run analysis will re-download if needed.');
+      },
+      error: (err) => {
+        this.cacheClearing.set(false);
+        this.cacheMessage.set(this.toFriendlyError(err));
+      },
+    });
   }
 
   formatStat(value: number): string {
@@ -629,18 +826,91 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
 
   selectEvent(event: KnownEvent): void {
     this.selectedEventId.set(event.id);
+    this.selectedCatalogName.set(null);
+    this.coincidenceDetectorsOverride.set(null);
     this.gpsTime.set(event.gpsTime);
     this.detector.set(event.detector);
     this.result.set(null);
     this.coincidence.set(null);
     this.coincidenceWarning.set(null);
     this.coincidenceLoading.set(false);
+    this.cacheMessage.set(null);
     this.error.set(null);
     this.fetch();
   }
 
+  onGpsTimeChange(value: number): void {
+    this.gpsTime.set(Number(value));
+    this.selectedCatalogName.set(null);
+    this.coincidenceDetectorsOverride.set(null);
+    const known = knownEventForGps(Number(value));
+    this.selectedEventId.set(known?.id ?? '');
+  }
+
+  onCatalogIdChange(catalogId: string): void {
+    this.catalogId.set(catalogId);
+    this.loadCatalog();
+  }
+
+  loadCatalog(): void {
+    this.catalogLoading.set(true);
+    this.catalogError.set(null);
+    this.catalogSelectWarning.set(null);
+    this.strainApi.getEventCatalog(this.catalogId()).subscribe({
+      next: (events) => {
+        this.catalogEvents.set(events);
+        this.catalogLoading.set(false);
+      },
+      error: (err) => {
+        this.catalogEvents.set([]);
+        this.catalogLoading.set(false);
+        this.catalogError.set(this.toFriendlyError(err));
+      },
+    });
+  }
+
+  selectCatalogEvent(event: CatalogEventSummary): void {
+    if (this.catalogSelecting() || this.loading() || this.coincidenceLoading()) return;
+
+    this.catalogSelecting.set(true);
+    this.catalogSelectWarning.set(null);
+    this.selectedCatalogName.set(event.name);
+    this.selectedEventId.set('');
+    this.gpsTime.set(event.gpsTime);
+    this.result.set(null);
+    this.coincidence.set(null);
+    this.coincidenceWarning.set(null);
+    this.coincidenceLoading.set(false);
+    this.cacheMessage.set(null);
+    this.error.set(null);
+
+    this.strainApi.getEventMetadata(event.name).subscribe({
+      next: (detail) => {
+        if (Number.isFinite(detail.gpsTime)) {
+          this.gpsTime.set(detail.gpsTime);
+        }
+        this.detector.set(pickPreferredDetector(detail.detectors));
+        this.coincidenceDetectorsOverride.set(coincidenceDetectorsFromPublicStrain(detail.detectors));
+        const known = knownEventForGps(this.gpsTime());
+        this.selectedEventId.set(known?.id ?? '');
+        this.catalogSelecting.set(false);
+        this.fetch();
+      },
+      error: (err) => {
+        // GPS from the catalog list is enough to run; default to H1+L1 coincidence.
+        this.coincidenceDetectorsOverride.set(['H1', 'L1']);
+        this.catalogSelecting.set(false);
+        this.catalogSelectWarning.set(
+          `Could not load detectors for ${event.name} — using H1 and default coincidence. ${this.toFriendlyError(err)}`,
+        );
+        this.fetch();
+      },
+    });
+  }
+
   ngOnInit(): void {
     this.refreshHealth();
+    this.loadCatalog();
   }
 
   refreshHealth(): void {
@@ -680,6 +950,9 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
     // Keep the event pill in sync with the GPS actually being requested.
     const knownForQuery = knownEventForGps(query.gpsTime);
     this.selectedEventId.set(knownForQuery?.id ?? '');
+    if (knownForQuery) {
+      this.selectedCatalogName.set(null);
+    }
 
     if (this.syntheticMode()) {
       this.inFlight = this.strainApi
@@ -701,12 +974,12 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const known = knownEventForGps(query.gpsTime);
-    const coincidenceDetectors = known?.coincidenceDetectors ?? (['H1', 'L1'] as Detector[]);
+    const { detectors: coincidenceDetectors, note: coincidenceNote } =
+      this.resolveCoincidenceDetectors(query.gpsTime);
 
     if (coincidenceDetectors.length < 2) {
-      if (known?.coincidenceNote) {
-        this.coincidenceWarning.set(known.coincidenceNote);
+      if (coincidenceNote) {
+        this.coincidenceWarning.set(coincidenceNote);
       }
       this.inFlight = this.strainApi.getStrainDetection(query).subscribe({
         next: (strain) => {
@@ -781,6 +1054,27 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
       clearInterval(this.timerId);
       this.timerId = null;
     }
+  }
+
+  private resolveCoincidenceDetectors(gpsTime: number): {
+    detectors: Detector[];
+    note?: string;
+  } {
+    const known = knownEventForGps(gpsTime);
+    if (known && known.coincidenceDetectors !== undefined) {
+      return { detectors: known.coincidenceDetectors, note: known.coincidenceNote };
+    }
+    const override = this.coincidenceDetectorsOverride();
+    if (override !== null) {
+      return {
+        detectors: override,
+        note:
+          override.length < 2
+            ? 'Dual-detector coincidence skipped — fewer than two of H1/L1 have public strain for this event.'
+            : undefined,
+      };
+    }
+    return { detectors: ['H1', 'L1'] };
   }
 
   private formatElapsed(totalSeconds: number): string {

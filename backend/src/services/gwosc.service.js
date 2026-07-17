@@ -8,9 +8,10 @@ const client = axios.create({
   timeout: 15000,
 });
 
-async function fetchEventCatalog(catalog = 'GWTC-1-confident') {
+async function fetchEventCatalog(catalog = 'GWTC') {
   try {
-    const { data } = await client.get(`/eventapi/json/${catalog}`);
+    // Trailing slash avoids a GWOSC 301 that some clients mishandle.
+    const { data } = await client.get(`/eventapi/json/${catalog}/`);
     return data;
   } catch (error) {
     logger.error('GWOSC catalog fetch failed', error.message);
@@ -20,7 +21,7 @@ async function fetchEventCatalog(catalog = 'GWTC-1-confident') {
 
 async function fetchEventMetadata(eventName) {
   try {
-    const { data } = await client.get(`/eventapi/json/event/${eventName}`);
+    const { data } = await client.get(`/eventapi/json/event/${eventName}/`);
     return data;
   } catch (error) {
     logger.error('GWOSC event metadata fetch failed', error.message);

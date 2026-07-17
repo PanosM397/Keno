@@ -158,13 +158,19 @@ $R=S_{\mathrm{raw}}-\hat{N}$. The architecture has three services:
         short timeout ($5\,\mathrm{s}$). Repeat requests for the same GPS
         window typically return from cache in seconds.
   \item \textbf{Frontend command center (Angular).}
-        An interactive three-pane diff viewer for preset catalog events
-        (e.g.\ GW150914) or custom GPS times. It plots synchronized raw
-        strain, predicted noise $\hat{N}$, and residual $R$, and surfaces a
-        ``blind search (template-free)'' panel: raw vs residual excess power,
-        calibrated thresholds, percent of threshold, and H1+L1 coincidence
-        flags. Synthetic validation mode injects a known burst so a developer
-        can verify the subtraction path without a live download.
+        An interactive three-pane diff viewer for curated demo events
+        (GW150914, GW170817, GW190425), events selected from the published
+        GWOSC catalog API, or custom GPS times. It plots synchronized raw
+        strain, predicted noise $\hat{N}$, and residual $R$ (with event-time
+        markers), and surfaces a ``blind search (template-free)'' panel: raw
+        vs residual excess power, calibrated thresholds, percent of
+        threshold, and H1+L1 coincidence with separate
+        \emph{Production} (coherent EP + lag + envelope) and
+        \emph{Independent} (both IFOs clear the single-detector residual
+        gate; diagnostic only) flags. Dual-detector coincidence is skipped
+        when fewer than two of H1/L1 have public strain (e.g.\ GW190425).
+        Synthetic validation mode injects a known burst so a developer can
+        verify the subtraction path without a live download.
 \end{itemize}
 Data ingestion from GWOSC is wrapped once in the ML service: open frames are
 fetched around a GPS timestamp, validated for NaN gaps (offline detectors),
@@ -405,8 +411,9 @@ cd ml-engine
 python -m app.evaluation.aresgw_class --train
 python -m app.prove --freeze --freeze-label 2026-07-paper-v1
 \end{verbatim}
-Interactive inspection uses the Angular command center against the Express
-backend and FastAPI ML engine (see repository READMEs).
+Interactive inspection uses the Angular command center---demo presets, GWOSC
+catalog picker, or custom GPS---with the Express backend and FastAPI ML engine
+(see repository READMEs).
 
 \section{Conclusion}
 

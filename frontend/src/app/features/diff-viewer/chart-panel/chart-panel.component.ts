@@ -10,12 +10,24 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
-import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components';
+import {
+  DataZoomComponent,
+  GridComponent,
+  MarkLineComponent,
+  TooltipComponent,
+} from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
 import { SeriesPoint } from '../../../core/models/strain.models';
 
-echarts.use([LineChart, GridComponent, TooltipComponent, DataZoomComponent, CanvasRenderer]);
+echarts.use([
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  DataZoomComponent,
+  MarkLineComponent,
+  CanvasRenderer,
+]);
 
 const connectedGroups = new Set<string>();
 
@@ -34,6 +46,11 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
   @Input() points: SeriesPoint[] = [];
   @Input() loading = false;
   @Input() loadingMessage = 'Loading chart…';
+  /** Vertical mark at t=0 (catalog GPS). Off for synthetic runs. */
+  @Input() markEventTime = false;
+  /** Optional residual/energy peak time in seconds from event. */
+  @Input() peakTimeSeconds: number | null = null;
+  @Input() peakLabel = 'residual peak';
 
   @ViewChild('chartHost', { static: true }) chartHost!: ElementRef<HTMLDivElement>;
 
@@ -66,7 +83,15 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['points'] && this.chart) {
+    if (
+      (changes['points'] ||
+        changes['markEventTime'] ||
+        changes['peakTimeSeconds'] ||
+        changes['peakLabel'] ||
+        changes['accentColor'] ||
+        changes['title']) &&
+      this.chart
+    ) {
       this.applyOption();
       requestAnimationFrame(() => this.chart?.resize());
     }
@@ -77,10 +102,52 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
     this.chart?.dispose();
   }
 
+  private buildMarkLine() {
+    const data: Array<{
+      xAxis: number;
+      name: string;
+      lineStyle: { color: string; width: number; type: 'solid' | 'dashed' };
+      label: { formatter: string; color: string; fontSize: number };
+    }> = [];
+
+    if (this.markEventTime) {
+      data.push({
+        xAxis: 0,
+        name: 'event',
+        lineStyle: { color: 'rgba(242,242,242,0.45)', width: 1, type: 'dashed' },
+        label: { formatter: 'event', color: 'rgba(242,242,242,0.55)', fontSize: 10 },
+      });
+    }
+
+    if (this.peakTimeSeconds !== null && Number.isFinite(this.peakTimeSeconds)) {
+      data.push({
+        xAxis: this.peakTimeSeconds,
+        name: this.peakLabel,
+        lineStyle: { color: this.accentColor, width: 1.25, type: 'solid' },
+        label: {
+          formatter: this.peakLabel,
+          color: this.accentColor,
+          fontSize: 10,
+        },
+      });
+    }
+
+    if (!data.length) {
+      return undefined;
+    }
+
+    return {
+      symbol: 'none',
+      animation: false,
+      data,
+    };
+  }
+
   private applyOption(): void {
     if (!this.chart) return;
 
     const data = this.points.map((p) => [p.time, p.value]);
+    const seriesName = this.title || 'strain';
 
     this.chart.setOption(
       {
@@ -96,8 +163,23 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
           backgroundColor: '#0a0a0a',
           borderColor: 'rgba(255,255,255,0.2)',
           padding: [8, 12],
-          textStyle: { color: '#f2f2f2', fontFamily: 'ui-monospace, SF Mono, Menlo, monospace', fontSize: 12 },
-          valueFormatter: (value: number | string) => Number(value).toFixed(4),
+          textStyle: {
+            color: '#f2f2f2',
+            fontFamily: 'ui-monospace, SF Mono, Menlo, monospace',
+            fontSize: 12,
+          },
+          formatter: (params: unknown) => {
+            const items = Array.isArray(params) ? params : [params];
+            const first = items[0] as {
+              axisValue?: number | string;
+              data?: [number, number];
+              seriesName?: string;
+            };
+            const time = Number(first?.axisValue ?? first?.data?.[0] ?? 0);
+            const value = Number(first?.data?.[1] ?? 0);
+            const name = first?.seriesName || seriesName;
+            return `${name}<br/>${time.toFixed(4)} s from event<br/>value ${value.toFixed(4)}`;
+          },
         },
         xAxis: {
           type: 'value',
@@ -123,6 +205,7 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
         dataZoom: [{ type: 'inside', xAxisIndex: 0 }],
         series: [
           {
+            name: seriesName,
             type: 'line',
             data,
             showSymbol: false,
@@ -130,10 +213,11 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
             lineStyle: { color: this.accentColor, width: 1.25 },
             areaStyle: { color: this.accentColor, opacity: 0.06 },
             emphasis: { disabled: true },
+            markLine: this.buildMarkLine(),
           },
         ],
       },
-      { notMerge: false },
+      { notMerge: true },
     );
   }
 }

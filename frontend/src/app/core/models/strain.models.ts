@@ -82,3 +82,17 @@ export interface SeriesPoint {
   time: number;
   value: number;
 }
+
+/** One GWOSC catalog row (latest version per commonName). */
+export interface CatalogEventSummary {
+  name: string;
+  versionKey: string;
+  gpsTime: number;
+  catalog: string;
+  version: number;
+}
+
+/** GWOSC event detail with public strain detectors. */
+export interface CatalogEventDetail extends CatalogEventSummary {
+  detectors: Detector[];
+}
