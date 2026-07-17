@@ -8,9 +8,9 @@
 \usepackage{natbib}
 \usepackage{xcolor}
 
-\title{Generative denoising for template-free gravitational-wave burst search}
+\title{Keno: generative noise subtraction for template-free gravitational-wave burst search}
 \author{
-  Panagiotis Minoglou\thanks{Independent researcher.
+  Panagiotis Minoglou\thanks{Independent researcher / software engineer.
   Corresponding author. E-mail: \texttt{panosmng97@gmail.com}}
 }
 \date{\today}
@@ -19,102 +19,153 @@
 \maketitle
 
 \begin{abstract}
-Binary black hole (BBH) deep classifiers such as AresGW are optimized for
-compact-binary morphologies in a fixed mass range. Unmodeled transients
-(e.g.\ core-collapse supernovae and other short bursts) lie outside that
-training objective. We present Keno, a generative residual-search pipeline that
-learns detector noise, subtracts the predicted noise from whitened strain, and
-searches the residual with template-free excess power, dual-interferometer
-coherent lag scans, and an envelope-consistency glitch veto.
-On unknown-morphology injections in real LIGO noise at 1\% false-alarm rate,
-Keno residual excess power saturates near 100\% efficiency across SNR\,2--12,
-while a BBH-trained AresGW-class ResNet plateaus near 60--80\% and mismatched
-matched filtering remains near 20\%.
-On published GWTC/cWB GPS times, coherent residual coincidence recovers 9/18
-dual-detector events after vetoing the known L1 glitch contamination of GW170817.
-Keno is complementary to AresGW: it does not claim superior BBH sensitive
-distance in the AresGW mass range.
+Keno is a research software prototype for searching short gravitational-wave
+bursts without assuming a known waveform shape. A neural network learns to
+predict detector noise from whitened sensor data; that prediction is
+subtracted; and the leftover residual is searched with an energy-based
+statistic, a two-detector timing check, and a simple consistency veto.
+
+On synthetic bursts injected into real LIGO noise, at a 1\% false-alarm rate
+(about one false trigger per hundred noise-only tests), Keno residual search
+reaches near 100\% detection efficiency from signal-to-noise ratio (SNR)\,2
+to\,12. Searching the same data without subtraction, or with a deliberately
+wrong matched-filter template, is less efficient. On published event times
+from public catalogs, a coherent two-detector residual search recovers 9 of
+18 dual-detector events after rejecting a known glitch near GW170817.
+
+Keno is meant to complement morphology-specific binary black hole classifiers,
+not replace them. The contribution is a reproducible software path for
+unmodeled residual search.
 \end{abstract}
 
 \section{Introduction}
+ 
+LIGO and Virgo record a time series called \emph{strain}: a dimensionless
+measure of how much spacetime stretches as gravitational waves pass the
+detector. In software terms, strain is a 1D signal sampled at high rate
+(here $4096\,\mathrm{Hz}$). Before analysis it is usually \emph{whitened}:
+filtered so that stationary background noise has roughly unit variance across
+frequency, which makes short anomalies easier to see.
 
-Matched filtering and BBH-trained deep networks dominate compact-binary
-searches~\citep{nousi2023,koloniari2025}.
-AresGW~\citep{nousi2023} uses a deep residual network with adaptive
-normalization to classify one-second segments as BBH or noise, achieving
-competitive sensitive distances in its training mass window.
-That success does not transfer to morphologies absent from training.
+Search methods fall into two complementary families:
+\begin{itemize}
+  \item \textbf{Morphology-specific / template-based.} If the expected signal
+        shape is known (for example a binary black hole merger chirp), one can
+        match-filter against templates or train a classifier on that family.
+        AresGW~\citep{nousi2023,koloniari2025} is a successful example of the
+        classifier approach for black hole mergers.
+  \item \textbf{Template-free / unmodeled.} If the shape is unknown (short
+        rings, noise-like bursts, or other transients), one instead looks for
+        localized excess energy that is consistent across detectors, without
+        assuming a particular waveform.
+\end{itemize}
 
-Unmodeled burst searches (e.g.\ coherent WaveBurst) ask a different question:
-whether excess coherent power remains after accounting for detector noise.
-Keno follows that spirit with a generative step: a 1D U-Net predicts
-instrumental noise $N$, forming
+Keno belongs to the second family. It adds a generative denoising step before
+the energy search: a neural network predicts instrumental noise $\hat N$ and
+forms a cleaned residual
 \begin{equation}
-S_{\mathrm{clean}} = S_{\mathrm{raw}} - \hat N,
+S_{\mathrm{clean}} = S_{\mathrm{raw}} - \hat N.
 \end{equation}
-then applies template-free excess power on $S_{\mathrm{clean}}$.
+The residual is then searched with excess power (an STFT peak-energy
+statistic), an H1+L1 lag scan (Hanford and Livingston detectors), and an
+envelope-consistency veto that rejects loud single-detector artifacts
+(\emph{glitches}).
 
-\paragraph{Claim scope.}
-We claim superiority on \emph{unknown-morphology} bursts at controlled false-alarm
-rate. We do \emph{not} claim that Keno supersedes AresGW on BBH detection.
+Keno was developed as an independent research prototype by a software engineer.
+It is not a LIGO collaboration product and is not presented as a production
+search pipeline.
+
+\paragraph{Relation to morphology-specific classifiers.}
+Systems such as AresGW~\citep{nousi2023} answer: ``does this segment look like
+a black hole merger I was trained on?'' Keno answers: ``after I remove the
+noise I think I understand, does excess energy remain?'' Those are different
+jobs. Keno is intended as a complementary contribution for unmodeled bursts.
+
+\paragraph{Claim.}
+In this prototype, generative subtraction followed by residual excess-power
+search improves recovery of unknown-morphology bursts at controlled false-alarm
+rate, relative to (i)~excess power on the unsubtracted strain and
+(ii)~matched filtering with a deliberately wrong template.
+
+\section{Background terms (for software readers)}
+
+\begin{description}
+  \item[SNR] Signal-to-noise ratio. Roughly how loud the injected burst is
+        relative to the background; higher SNR is easier to detect.
+  \item[FAR] False-alarm rate. The fraction of pure-noise trials that still
+        cross the detection threshold. A 1\% FAR means about 1 in 100
+        noise-only windows is counted as a false trigger.
+  \item[Matched filter] Correlate the data against a known waveform template.
+        Very powerful when the template matches the true signal; weak when it
+        does not.
+  \item[Excess power] A template-free energy statistic: look for a loud
+        time--frequency patch relative to a robust noise floor (here, the
+        median STFT power).
+  \item[Residual] What remains after subtracting predicted noise from the
+        input. Ideally background shrinks and a real burst survives.
+  \item[Glitch] A non-astrophysical detector artifact that can look like a
+        burst in one interferometer.
+  \item[H1 / L1] LIGO Hanford and LIGO Livingston. Requiring both reduces
+        single-detector false alarms.
+\end{description}
 
 \section{Method}
 
-Figure~\ref{fig:pipeline} summarizes the production path. All strain segments
-are whitened and sampled at $f_s=4096\,\mathrm{Hz}$. Unless noted, analysis
+Figure~\ref{fig:pipeline} summarizes the detection path. Strain segments are
+whitened and sampled at $f_s=4096\,\mathrm{Hz}$. Unless noted, analysis
 windows are $T=4\,\mathrm{s}$ ($N=16\,384$ samples).
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig1_pipeline.png}
-  \caption{Keno production detection path: generative noise subtraction,
-  residual excess power, coherent H1+L1 lag scan, and envelope-consistency veto.}
+  \caption{Keno detection path: predict noise, subtract, search residual
+  excess power, then check H1+L1 timing consistency with an envelope veto.}
   \label{fig:pipeline}
 \end{figure}
 
 \subsection{Generative noise model}
-Keno uses a 1D U-Net noise denoiser~\cite{ronneberger2015} with four
-encoder/decoder stages (base width 16 channels, kernel size 9, GELU
-activations and batch normalization). The network maps whitened strain
-$S_{\mathrm{raw}}$ to a predicted noise waveform $\hat N$ and forms the
-residual
+Keno uses a 1D U-Net~\citep{ronneberger2015} with four encoder/decoder stages
+(base width 16 channels, kernel size 9, GELU activations, batch normalization).
+In software terms this is a convolutional autoencoder-style network for 1D
+sequences: it maps whitened strain $S_{\mathrm{raw}}$ to a predicted noise
+waveform $\hat N$. The residual is
 \begin{equation}
 R = S_{\mathrm{raw}} - \hat N.
 \end{equation}
-Training uses real GWOSC background windows cached for H1/L1. Fine-tuning
-emphasizes burst preservation so that injected short transients survive
-subtraction. A Phase-1 hold-out check requires mean normalized recovery error
-$\mathrm{RMS}(R-s)/\mathrm{RMS}(s)<0.15$ on injected bursts with known ground
-truth $s$. The production checkpoint for this work is frozen under label
+Training uses cached real public LIGO background windows (GWOSC) for H1/L1.
+A residual loss term encourages injected short bursts to survive subtraction
+instead of being absorbed into $\hat N$. A hold-out acceptance check requires
+mean normalized recovery error
+$\mathrm{RMS}(R-s)/\mathrm{RMS}(s)<0.15$ on injections with known ground-truth
+signal $s$. The checkpoint used here is frozen as
 \texttt{2026-07-paper-v1} (SHA256 prefix \texttt{55ce7637\ldots}).
 
 \subsection{Template-free excess-power statistic}
-On a residual (or raw) time series $x(t)$, Keno computes a short-time Fourier
-transform (Hann window, $n_{\mathrm{perseg}}=256$, 75\% overlap), forms
-bin power $P(f,t)$, estimates a robust noise floor as the median of $P$, and
-defines the detection statistic as the peak normalized excess power
+For a residual or raw series $x(t)$, Keno computes a short-time Fourier
+transform (Hann window, $n_{\mathrm{perseg}}=256$, 75\% overlap) --- the usual
+STFT used in audio/DSP work. It forms bin power $P(f,t)$, estimates a robust
+noise floor as $\mathrm{median}(P)$, and defines
 \begin{equation}
 \rho_{\mathrm{EP}}(x)
   = \max_{f,t}\frac{P(f,t)}{\mathrm{median}(P)}.
 \end{equation}
-This is a cWB-style, morphology-agnostic energy excess measure: no template
-inner product is required.
+Intuitively: ``how many times louder is the loudest spectrogram cell than the
+typical background cell?'' No template correlation is required.
 
-\subsection{Single-detector residual search}
-For a single interferometer, Keno reports $\rho_{\mathrm{EP}}(R)$ and
-compares it to a threshold $\theta_{\mathrm{IFO}}$ calibrated on noise-only
-windows at a target false-alarm rate (FAR). Calibration uses the empirical
-$(1-\mathrm{FAR})$ percentile after trimming the upper 1\% of
-subtraction-glitched noise trials (artifact-robust threshold). In the freeze,
-$\theta_{\mathrm{IFO}}\approx 4004.6$ at 1\% FAR. This gate is used for
-single-IFO diagnostics and independent residual coincidence; dual-IFO
-\emph{production} detection uses the coherent threshold below.
+\subsection{Single-detector residual gate}
+A residual threshold $\theta_{\mathrm{IFO}}$ is calibrated on noise-only
+windows at a target FAR. Because imperfect subtraction can create rare large
+artifacts, the upper 1\% of noise-only residual scores is trimmed before
+taking the $(1-\mathrm{FAR})$ percentile. In the freeze,
+$\theta_{\mathrm{IFO}}\approx 4004.6$ at 1\% FAR. This gate is useful for
+single-detector diagnostics. Dual-detector production detection uses the
+coherent threshold below.
 
-\subsection{Coherent dual-IFO lag scan}
-For H1 and L1 residuals $R_{\mathrm{H}}$ and $R_{\mathrm{L}}$, Keno scans
-integer sample lags $\ell$ with $|\ell|/f_s \le \Delta t_{\mathrm{lag}}$
-($\Delta t_{\mathrm{lag}}=10\,\mathrm{ms}$, the approximate light-travel
-window between sites) and polarities $p\in\{+1,-1\}$, forming
+\subsection{Coherent dual-detector lag scan}
+For residuals from Hanford and Livingston, $R_{\mathrm{H}}$ and
+$R_{\mathrm{L}}$, Keno scans small time shifts
+$|\ell|/f_s \le 10\,\mathrm{ms}$ (about the light-travel time between sites)
+and relative sign flips $p\in\{+1,-1\}$:
 \begin{equation}
 C_{\ell,p}
   = \frac{R_{\mathrm{H}} + p\,\mathcal{S}_{\ell}(R_{\mathrm{L}})}{\sqrt{2}},
@@ -124,115 +175,127 @@ where $\mathcal{S}_{\ell}$ is a zero-padded shift. The coherent statistic is
 \rho_{\mathrm{coh}}
   = \max_{\ell,p}\,\rho_{\mathrm{EP}}(C_{\ell,p}),
 \end{equation}
-with best lag $\tau^{\star}=\ell^{\star}/f_s$.
+with best lag $\tau^{\star}=\ell^{\star}/f_s$. This is a software
+cross-check: a real astrophysical signal should line up in both detectors
+within a few milliseconds; a random glitch usually will not.
 
-\subsection{Envelope-consistency glitch veto}
+\subsection{Envelope-consistency veto}
 Independent residual envelope peak times $t_{\mathrm{H}}$ and $t_{\mathrm{L}}$
 are estimated from a short smoothed energy envelope (8\,ms boxcar), ignoring
-edge guards of 64\,ms so boundary artifacts cannot dominate. Define
+the first/last 64\,ms so edge artifacts do not dominate. Define
 \begin{equation}
 \Delta t_{\mathrm{env}} = (t_{\mathrm{L}}-t_{\mathrm{H}})\times 10^{3}
 \quad\text{(ms)}.
 \end{equation}
-A large $|\Delta t_{\mathrm{env}}|$ with a loud coherent EP is characteristic of
-single-IFO glitch contamination (e.g.\ the L1 glitch at GW170817). Production
-therefore requires
-\begin{equation}
-|\Delta t_{\mathrm{env}}| \le \Delta t_{\mathrm{env}}^{\max}
-\qquad(\Delta t_{\mathrm{env}}^{\max}=50\,\mathrm{ms}).
-\end{equation}
+If $|\Delta t_{\mathrm{env}}| > 50\,\mathrm{ms}$ while the coherent score is
+loud, the candidate is treated as likely single-detector glitch contamination
+(for example the known Livingston glitch near GW170817).
 
 \subsection{Production detection rule}
-A dual-IFO \emph{production} trigger is declared if and only if
+A dual-detector production trigger is declared if and only if
 \begin{align}
 \rho_{\mathrm{coh}} &\ge \theta_{\mathrm{coh}}, \\
-|\tau^{\star}| &\le \Delta t_{\mathrm{lag}}, \\
-|\Delta t_{\mathrm{env}}| &\le \Delta t_{\mathrm{env}}^{\max}.
+|\tau^{\star}| &\le 10\,\mathrm{ms}, \\
+|\Delta t_{\mathrm{env}}| &\le 50\,\mathrm{ms}.
 \end{align}
-The coherent threshold $\theta_{\mathrm{coh}}$ is calibrated on dual-IFO
-noise trials that already pass the envelope gate (and, by construction of the
-lag scan, the timing gate). With 1500 noise trials (23 envelope-gated), the
-99th percentile of gated coherent EP yields
+The coherent threshold $\theta_{\mathrm{coh}}$ is calibrated on dual-detector
+noise trials that already pass the envelope gate. With 1500 noise trials
+(23 envelope-gated), the 99th percentile of gated coherent EP yields
 $\theta_{\mathrm{coh}}\approx 173.1$ at empirical joint FAR $0.07\%$
-(1/1500). Critically, $\theta_{\mathrm{coh}}\ll\theta_{\mathrm{IFO}}$: after
-envelope gating, dual-IFO noise coherent EP is far quieter than the
-single-IFO residual threshold.
+(1/1500). After gating, coherent noise is much quieter than the single-detector
+residual threshold.
 
-\subsection{Baselines (equal FAR)}
-All baselines share the same whitened windows and are thresholded at the same
-target FAR on noise-only trials:
+\subsection{Baselines}
+All baselines use the same whitened windows and the same target FAR on
+noise-only trials:
 \begin{itemize}
-  \item \textbf{Oracle matched filter} --- upper bound using the true injected
-        waveform (injection studies only).
-  \item \textbf{Mismatched matched filter} --- fixed sine-Gaussian decoy on raw
-        strain (classical off-morphology failure mode).
+  \item \textbf{Oracle matched filter} --- correlate against the true injected
+        waveform (injection studies only; an upper bound).
+  \item \textbf{Mismatched matched filter} --- correlate against a fixed
+        sine-Gaussian template that does not match the injected family
+        (control for wrong-template search).
   \item \textbf{Raw excess power} --- $\rho_{\mathrm{EP}}(S_{\mathrm{raw}})$
-        without subtraction (cWB-style energy search).
-  \item \textbf{AresGW-class} --- a compact 1D ResNet trained only on
-        BBH-like chirps versus noise in the same GWOSC cache, then scored as
-        $P(\mathrm{signal})$ on the central 1\,s slice. This implements the
-        AresGW \emph{training objective} (BBH vs noise) for off-template
-        evaluation~\citep{nousi2023}; it is \emph{not} the AUTH published
-        weight file.
-  \item \textbf{Keno residual EP} --- $\rho_{\mathrm{EP}}(R)$ (production
-        single-IFO path).
+        with no generative subtraction.
+  \item \textbf{BBH-trained ResNet (control)} --- a compact 1D ResNet trained
+        only on black-hole-merger-like chirps versus noise in the same cache,
+        scored as $P(\mathrm{signal})$ on the central 1\,s. This is a local
+        morphology-specific control in the spirit of BBH classifiers such as
+        AresGW~\citep{nousi2023}; it is not a published external weight file.
+  \item \textbf{Keno residual EP} --- $\rho_{\mathrm{EP}}(R)$.
   \item \textbf{Keno overlap} --- cosine similarity between residual and
-        injected signal (eval-only; requires ground truth).
+        injected signal (evaluation only; needs ground truth).
 \end{itemize}
 
 \section{Experiments}
 
-Injection campaigns use cached real LIGO background with mixed unknown
-morphologies (sine-Gaussian, ringdown, white-noise burst) at equal FAR.
-We also report O3 Gravity Spy glitch stress, dual-IFO noise coincidence FAR,
-and a GWTC/cWB GPS follow-up consistency check (not a discovery claim).
+Injection campaigns mix short unknown morphologies (sine-Gaussian, ringdown,
+white-noise burst) into cached real LIGO background at equal FAR.
+Additional studies include a glitch stress test on public O3 Gravity Spy
+labels, dual-detector noise coincidence FAR, and a follow-up on published
+GWTC/cWB GPS times (public catalog timestamps). The catalog follow-up is a
+consistency check, not a discovery claim.
 
 \section{Results}
 
 \subsection{Unknown-morphology efficiency}
 Figure~\ref{fig:eff} shows Keno residual EP at 100\% efficiency across
-SNR\,2--12 at 1\% FAR. The AresGW-class BBH ResNet reaches 50\% efficiency but
-plateaus near 60--80\% (off-template leakage without saturation). Mismatched
-matched filtering remains near $\sim$20\% and never reaches 50\% efficiency.
-
-\subsection{Coherent calibration}
-Envelope gating removes most dual-IFO noise outliers. With 1500 noise trials
-(23 envelope-gated), the coherent EP threshold is $173.1$ at empirical joint
-FAR $0.07\%$, separate from the single-IFO residual threshold $\approx 4005$.
-
-\subsection{GWTC/cWB follow-up}
-Production coincidence recovers 9/18 GWTC/cWB dual-IFO events
-(Figure~\ref{fig:followup}). GW170817 is rejected by the envelope veto despite
-huge coherent EP (L1 glitch). Contaminated recoveries are not counted as
-detections. cWB-only candidates remain 0/3.
+SNR\,2--12 at 1\% FAR. Raw excess power on unsubtracted strain is less
+efficient on the same injections. Mismatched matched filtering remains near
+$\sim$20\% and never reaches 50\% efficiency. The BBH-trained ResNet control,
+evaluated on these non-BBH bursts, plateaus below saturation --- expected for
+a morphology-specific model outside its training objective.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig2_efficiency.png}
   \caption{Detection efficiency vs injected SNR at 1\% FAR on unknown morphology.
-  AresGW-class is evaluated off-template.}
+  Baselines include raw excess power, mismatched matched filtering, and a
+  BBH-trained ResNet control evaluated off-template.}
   \label{fig:eff}
 \end{figure}
+
+\subsection{Coherent calibration}
+Envelope gating removes most dual-detector noise outliers. With 1500 noise
+trials (23 envelope-gated), the coherent EP threshold is $173.1$ at empirical
+joint FAR $0.07\%$, separate from the single-detector residual threshold
+$\approx 4005$.
+
+\subsection{Catalog GPS follow-up}
+Production coincidence recovers 9/18 dual-detector catalog events
+(Figure~\ref{fig:followup}). GW170817 is rejected by the envelope veto despite
+huge coherent EP (Livingston glitch). Contaminated recoveries are not counted
+as detections. A small set of cWB-only candidates remains 0/3.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig5_followup.png}
-  \caption{Follow-up coherent EP by event. Green: production YES; orange: envelope veto; gray: miss.}
+  \caption{Follow-up coherent EP by event. Green: production YES; orange:
+  envelope veto; gray: miss.}
   \label{fig:followup}
 \end{figure}
 
-\section{Discussion}
+\section{Discussion and limitations}
 
-Keno and AresGW answer different questions. Use AresGW (or matched filtering)
-for BBH CBC in-band; use Keno when the waveform family is unknown.
-Limitations include near-zero single-IFO glitch kill rate (coincidence and
-envelope veto are the defense), residual over-subtraction risk (mitigated by
-fine-tuning and validation), and incomplete recovery of cWB-only candidates.
+Keno is proposed as a complementary software path for unmodeled residual
+search. Morphology-specific BBH classifiers and matched-filter compact-binary
+pipelines~\citep{nousi2023,koloniari2025} remain the right tools when the
+target family is known.
+
+Known limitations of this prototype include:
+\begin{itemize}
+  \item weak single-detector glitch rejection; coincidence and the envelope
+        veto do most of that work;
+  \item residual over-subtraction risk if training is insufficient, mitigated
+        by the recovery-error acceptance check;
+  \item incomplete recovery of some catalog candidates in this freeze;
+  \item development by a single engineer with a research codebase, without
+        collaboration-scale detector characterization or production operations.
+\end{itemize}
 
 \section{Reproducibility}
 
-Frozen artifacts live under \texttt{docs/freeze/current/} with checkpoint SHA256
-\texttt{55ce7637\ldots} (label \texttt{2026-07-paper-v1}).
+Frozen artifacts are stored under \texttt{docs/freeze/current/} with checkpoint
+SHA256 prefix \texttt{55ce7637\ldots} (label \texttt{2026-07-paper-v1}).
 Reproduce with:
 \begin{verbatim}
 cd ml-engine
@@ -242,9 +305,11 @@ python -m app.prove --freeze --freeze-label 2026-07-paper-v1
 
 \section{Conclusion}
 
-Generative noise subtraction with template-free coherent residual search
-recovers unknown-morphology bursts where BBH-trained classifiers fail, at
-controlled false-alarm rate, without claiming BBH superiority over AresGW.
+Generative noise subtraction followed by template-free residual search can
+recover unknown-morphology bursts at controlled false-alarm rate in a
+reproducible research prototype. Keno is released as a software contribution
+for unmodeled residual search --- complementary to existing BBH classifiers ---
+for audit and extension, not as a finished gravitational-wave pipeline.
 
 \section*{Data availability}
 Code and freeze bundle accompany this manuscript. Large evaluation CSVs are
