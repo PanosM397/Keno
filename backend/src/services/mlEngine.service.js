@@ -9,8 +9,9 @@ const client = axios.create({
 
 // GWOSC frame downloads (via gwpy) can take several minutes on a cold
 // fetch, so the inference call gets a much longer allowance than routine
-// health checks.
+// health checks. Coincidence fetches two detectors, so it needs ~2× budget.
 const DENOISE_TIMEOUT_MS = 300000;
+const COINCIDENCE_TIMEOUT_MS = 600000;
 const HEALTH_TIMEOUT_MS = 5000;
 
 function mlEngineErrorDetail(error) {
@@ -109,7 +110,7 @@ async function requestCoincidenceDetection({
         detectors,
         duration,
       },
-      { timeout: DENOISE_TIMEOUT_MS },
+      { timeout: COINCIDENCE_TIMEOUT_MS },
     );
     return data;
   } catch (error) {

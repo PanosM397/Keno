@@ -129,4 +129,21 @@ async function getStrainCoincidence(req, res, next) {
   }
 }
 
-module.exports = { getDenoisedStrain, getStrainDetection, getStrainCoincidence, getEventCatalog, getEventMetadata };
+async function clearStrainCache(req, res, next) {
+  try {
+    cacheService.clear();
+    logger.info('Strain response cache cleared');
+    return res.json({ cleared: true });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = {
+  getDenoisedStrain,
+  getStrainDetection,
+  getStrainCoincidence,
+  getEventCatalog,
+  getEventMetadata,
+  clearStrainCache,
+};

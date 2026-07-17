@@ -32,8 +32,8 @@
       }
     </div>
 
-    <button class="run-btn" (click)="fetch()" [disabled]="loading()">
-      @if (loading()) {
+    <button class="run-btn" (click)="fetch()" [disabled]="loading() || coincidenceLoading()">
+      @if (loading() || coincidenceLoading()) {
         <span class="run-btn-label">Running…</span>
         <span class="run-btn-elapsed mono">{{ formattedElapsed() }}</span>
       } @else {
@@ -90,7 +90,8 @@
             <option value="V1">Virgo (V1) — single-detector only</option>
           </select>
           <p class="toggle-hint">
-            Charts use the selected observatory. Coherent coincidence always runs H1+L1 (Virgo is not in the lag-scan yet).
+            Charts use the selected observatory. Coincidence uses H1+L1 when both
+            are valid for the GPS time; single-detector presets (e.g. GW190425) skip it.
           </p>
         </div>
         <div class="field">
@@ -145,8 +146,19 @@
         <div class="meta">{{ resultSummary() }}</div>
       }
 
+      @if (staleResultWarning(); as stale) {
+        <div class="status status--warning">{{ stale }}</div>
+      }
+
       @if (coincidenceWarning(); as warning) {
         <div class="status status--warning">{{ warning }}</div>
+      }
+
+      @if (coincidenceLoading()) {
+        <div class="status status--info">
+          Fetching multi-detector coincidence (second observatory download)…
+          <span class="status-elapsed mono">{{ formattedElapsed() }}</span>
+        </div>
       }
 
       @if (resultDiagnostics(); as diagnostics) {
@@ -257,7 +269,7 @@
 
       @if (coincidence(); as coincidenceResult) {
         <details class="coincidence" open>
-          <summary>H1 + L1 coincidence</summary>
+          <summary>{{ coincidencePanelTitle() }}</summary>
           @if (coincidenceSummary(); as summary) {
             <p
               class="coincidence-verdict"
@@ -302,6 +314,7 @@
               · lag {{ coherent.bestLagMs >= 0 ? '+' : '' }}{{ coherent.bestLagMs.toFixed(1) }} ms
               · peak dt {{ coherent.peakDtMs.toFixed(1) }} ms
               · timing {{ coherent.timingOk ? 'ok' : 'veto' }}
+              · envelope {{ coherent.envelopeOk ? 'ok' : 'veto' }}
             </p>
           }
           <p class="coincidence-footer">
@@ -313,6 +326,9 @@
             <strong>{{ coincidenceResult.independentResidualCoincident ? 'Yes' : 'No' }}</strong>
             · Raw:
             <strong>{{ coincidenceResult.rawCoincident ? 'Yes' : 'No' }}</strong>
+          </p>
+          <p class="coincidence-footer coincidence-footer--hint">
+            Production = coherent EP + lag + envelope. Independent = both IFOs clear the single-detector residual gate (diagnostic only).
           </p>
         </details>
       }

@@ -4,8 +4,9 @@ Working title: *Generative denoising for template-free gravitational-wave burst 
 
 ## Claim (locked)
 
-Keno recovers **unknown-morphology** bursts where BBH-trained classifiers fail.
-It does **not** claim to beat AresGW on BBH sensitive distance.
+Keno = template-free residual search after generative noise subtraction
+(complementary to AresGW-style BBH classifiers). It does **not** claim to beat
+AresGW on BBH sensitive distance or classification.
 
 ## Build figures
 
@@ -43,5 +44,7 @@ Checkpoint: `ml-engine/checkpoints/aresgw_class_resnet.pt` (gitignored; retrain 
 - [ ] Abstract numbers match freeze summary exactly
 - [ ] No sentence claims BBH superiority over AresGW
 - [ ] Cite Nousi+2023, Koloniari+2025
-- [ ] arXiv categories: gr-qc, astro-ph.IM
+- [ ] arXiv: primary `astro-ph.IM`, cross-list `cs.LG` (see SUBMISSION.md)
 - [ ] Target journals: CQG or MLST
+- [ ] Notation: residual is always $R = S_{\mathrm{raw}} - \hat{N}$ (no $S_{\mathrm{clean}}$)
+- [ ] Gravity Spy per-class survival table matches `docs/freeze/current/glitch_stress_summary.txt`

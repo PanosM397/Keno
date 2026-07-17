@@ -135,11 +135,14 @@ windows are $T=4\,\mathrm{s}$ ($N=16\,384$ samples).
 
 \subsection{Software stack and interactive command center}
 Keno is intentionally a full-stack research system, not only a local training
-script. The architecture has three services:
+script. Beyond the residual statistic itself, the software contribution is a
+runnable path from open strain to inspected candidate: ingestion, inference,
+orchestration, and visual audit share one definition of
+$R=S_{\mathrm{raw}}-\hat{N}$. The architecture has three services:
 \begin{itemize}
   \item \textbf{ML engine (Python / FastAPI / PyTorch).}
         Loads the U-Net checkpoint, fetches and whitens strain via
-        \texttt{gwpy}, runs subtraction, and exposes REST endpoints for
+        \texttt{gwpy}, forms $R$, and exposes REST endpoints for
         denoising (\texttt{POST /api/v1/denoise}), single-detector detection
         (\texttt{POST /api/v1/detect}), and dual-detector coincidence
         (\texttt{POST /api/v1/detect/coincidence}). Offline evaluation modules
@@ -147,19 +150,21 @@ script. The architecture has three services:
         follow-up) share the same residual-search code path as the live API.
   \item \textbf{Backend orchestrator (Node.js / Express).}
         Proxies the Angular UI to the ML engine, forwards GWOSC/offline error
-        details, and caches denoise/detect responses in memory. Cold GWOSC
-        downloads can take on the order of 1--3 minutes, so the ML client uses
-        a long inference timeout ($300\,\mathrm{s}$); health checks use a short
-        timeout ($5\,\mathrm{s}$). Repeat requests for the same GPS window
-        typically return from cache in seconds.
+        details, and caches denoise/detect/coincidence responses in memory.
+        Cold GWOSC downloads can take on the order of 1--3 minutes per
+        detector, so the ML client uses a long inference timeout
+        ($300\,\mathrm{s}$ for single-detector detect;
+        $600\,\mathrm{s}$ for dual-detector coincidence). Health checks use a
+        short timeout ($5\,\mathrm{s}$). Repeat requests for the same GPS
+        window typically return from cache in seconds.
   \item \textbf{Frontend command center (Angular).}
-        An interactive diff viewer for preset catalog events (e.g.\ GW150914)
-        or custom GPS times. It plots three synchronized series --- raw strain,
-        predicted noise $\hat{N}$, and residual $R$ --- and surfaces calibrated
-        blind-search stats (raw vs residual excess power, percent of threshold,
-        H1+L1 coincidence flags). Synthetic validation mode injects a known
-        burst so a developer can verify the subtraction path without a live
-        download.
+        An interactive three-pane diff viewer for preset catalog events
+        (e.g.\ GW150914) or custom GPS times. It plots synchronized raw
+        strain, predicted noise $\hat{N}$, and residual $R$, and surfaces a
+        ``blind search (template-free)'' panel: raw vs residual excess power,
+        calibrated thresholds, percent of threshold, and H1+L1 coincidence
+        flags. Synthetic validation mode injects a known burst so a developer
+        can verify the subtraction path without a live download.
 \end{itemize}
 Data ingestion from GWOSC is wrapped once in the ML service: open frames are
 fetched around a GPS timestamp, validated for NaN gaps (offline detectors),
@@ -313,33 +318,53 @@ residual excess power still crossed threshold for $76.7\%$ of glitches
 (23/30), while the single-detector ``kill'' rate (raw trigger that disappears
 after subtraction) was $0/30$. Injected unknown-morphology burst controls on
 the same background were preserved at $40/40$ (residual trigger and
-overlap\,$\ge 0.75$).
+overlap\,$\ge 0.75$). Table~\ref{tab:glitch} reports residual survival by
+class (fraction that still trigger after subtraction; $n=5$ per label in this
+freeze).
 
-Residual survival by Gravity Spy class (fraction that still trigger after
-subtraction; $n=5$ per label in this freeze):
-\begin{itemize}
-  \item \textbf{Scattered Light} --- lowest residual survival ($20\%$).
-        Longer, more noise-like morphology; the U-Net tends to absorb more of
-        it into $\hat{N}$.
-  \item \textbf{Blip} --- moderate survival ($60\%$). Short, chirp-like
-        instrumental transients; partially suppressed, often still loud in
-        $R$.
-  \item \textbf{Tomte} --- high survival ($80\%$).
-  \item \textbf{Koi Fish}, \textbf{Extremely Loud}, \textbf{Whistle} ---
-        residual survival $100\%$ in this sample. These classes are
-        morphologically burst-like; the network preserves them in $R$ much as
-        it preserves astrophysical bursts.
-\end{itemize}
-The practical lesson for the software design is explicit: production defense
+\begin{table}[t]
+  \centering
+  \caption{Residual survival by Gravity Spy class on the curated O3a stress
+  subset (freeze \texttt{2026-07-paper-v1}). Survival means residual EP still
+  exceeds the single-detector threshold after forming
+  $R=S_{\mathrm{raw}}-\hat{N}$.}
+  \label{tab:glitch}
+  \begin{tabular}{lcc}
+    \toprule
+    Gravity Spy class & Residual survival & $n$ \\
+    \midrule
+    Scattered Light & $20\%$ & 5 \\
+    Blip & $60\%$ & 5 \\
+    Tomte & $80\%$ & 5 \\
+    Koi Fish & $100\%$ & 5 \\
+    Extremely Loud & $100\%$ & 5 \\
+    Whistle & $100\%$ & 5 \\
+    \midrule
+    All (this freeze) & $76.7\%$ (23/30) & 30 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Scattered Light shows the lowest survival: longer, more noise-like morphology
+that the U-Net tends to absorb into $\hat{N}$. Blips are only partially
+suppressed. Tomte and the burst-like classes (Koi Fish, Extremely Loud,
+Whistle) survive in $R$ much as injected astrophysical bursts do. The
+practical lesson for the software design is explicit: production defense
 against glitches is multi-detector coincidence and the envelope-timing veto,
 not an expectation that the U-Net will erase Gravity Spy morphologies on a
 single interferometer.
 
 \subsection{Catalog GPS follow-up}
 Production coincidence recovers 9/18 dual-detector catalog events
-(Figure~\ref{fig:followup}). GW170817 is rejected by the envelope veto despite
-huge coherent EP (Livingston glitch). Contaminated recoveries are not counted
-as detections. A small set of cWB-only candidates remains 0/3.
+(Figure~\ref{fig:followup}). GW150914 is recovered with
+\emph{Independent}=no and \emph{Production}=yes: Hanford residual EP clears
+the single-detector gate while Livingston does not, yet the coherent lag scan
+still passes the dual-IFO coherent threshold with aligned timing
+(EP\,$\approx 1.14\times 10^{4}$, lag\,$+8.5\,\mathrm{ms}$, envelope peak
+dt\,$-27.6\,\mathrm{ms}$). That asymmetry is expected and is not a failure of
+the production rule. GW170817 is rejected by the envelope veto despite huge
+coherent EP (Livingston glitch). Contaminated recoveries are not counted as
+detections. A small set of cWB-only candidates remains 0/3.
 
 \begin{figure}[t]
   \centering

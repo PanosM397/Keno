@@ -325,6 +325,11 @@
   color: #e8b058;
 }
 
+.status--info {
+  border-color: rgba(43, 255, 194, 0.35);
+  color: var(--color-text-secondary);
+}
+
 .meta {
   font-size: 11px;
   color: var(--color-text-tertiary);
@@ -555,6 +560,11 @@
   margin: 8px 0 0;
   line-height: 1.4;
   color: var(--color-text-tertiary);
+}
+
+.coincidence-footer--hint {
+  font-size: 0.85em;
+  opacity: 0.9;
 }
 
 .panels {
