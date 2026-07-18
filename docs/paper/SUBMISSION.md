@@ -9,11 +9,13 @@ git push origin main --tags   # when ready
 
 Checkpoint SHA256: `55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a`
 
-## Zenodo (manual)
+## Zenodo
 
-1. Create a Zenodo upload from the GitHub release or zip of `docs/freeze/current/` + code tag.
-2. Record the DOI in `docs/paper/keno_burst_search.tex` under Data availability.
-3. Include `aresgw_class` retrain command (weights are not in git).
+Preprint deposit (done): https://doi.org/10.5281/zenodo.21433068  
+(`2026-07-paper-v1`; manuscript + freeze metadata).
+
+Optional follow-up: GitHub Release → Zenodo software DOI for the full repo.
+Include `aresgw_class` retrain command (weights are not in git).
 
 ## arXiv (manual)
 
