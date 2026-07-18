@@ -7,10 +7,10 @@ A portfolio-grade, full-stack scientific application for discovering unmodeled g
 Instead of classifying strain data against known templates (binary black hole mergers), this system learns the latent space of instrumental glitches and quantum noise, then generates a mathematical mirror of that noise to subtract it from the raw signal:
 
 ```
-S_clean = S_raw - N_predicted
+R = S_raw - N_predicted
 ```
 
-The residual `S_clean` is what's left over for physicists to inspect for unmodeled anomalies that template-based classifiers (e.g. AresGW) are not designed to find.
+The residual `R` is what's left over for physicists to inspect for unmodeled anomalies that morphology-specific BBH classifiers (e.g. AresGW) are not designed to find.
 
 ## Monorepo Layout
 
@@ -29,8 +29,10 @@ Ensure a trained checkpoint exists at `ml-engine/checkpoints/unet_denoiser.pt` (
 ```bash
 cd ml-engine
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-uvicorn main:app --reload
+uvicorn main:app --host 127.0.0.1 --port 8000
 ```
+
+Prefer serving **without** `--reload` on macOS when using PyTorch (reload can crash).
 
 **Terminal 2 — Backend** (port 4000):
 
