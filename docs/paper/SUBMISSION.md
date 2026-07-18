@@ -56,3 +56,6 @@ U-Net + residual-search ML contribution is the lead.
 - GW170817 is envelope-vetoed.
 - Residual notation is $R = S_{\mathrm{raw}} - \hat{N}$ throughout (never $S_{\mathrm{clean}}$ as the formal symbol).
 - Glitch defense is coincidence + envelope veto; do not imply U-Net kills Gravity Spy classes.
+- Do **not** claim the freeze injection campaign shows Keno beating raw excess power:
+  both saturate at 1% FAR on those synthetic bursts. Residual-vs-raw advantage is
+  argued from catalog GPS follow-up (e.g. GW150914 residual-only trigger).

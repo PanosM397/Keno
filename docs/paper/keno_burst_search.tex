@@ -14,7 +14,7 @@
   Corresponding author. E-mail: \texttt{panosmng97@gmail.com}}
 }
 \date{\today}
-
+ 
 \begin{document}
 \maketitle
 
@@ -29,12 +29,17 @@ service, a Node.js orchestration API with caching, and an Angular command
 center for interactive residual visualization.
 
 On synthetic bursts injected into real LIGO noise, at a 1\% false-alarm rate
-(about one false trigger per hundred noise-only tests), Keno residual search
-reaches near 100\% detection efficiency from signal-to-noise ratio (SNR)\,2
-to\,12. Searching the same data without subtraction, or with a deliberately
-wrong matched-filter template, is less efficient. On published event times
-from public catalogs, a coherent two-detector residual search recovers 9 of
-18 dual-detector events after rejecting a known glitch near GW170817.
+(about one false trigger per hundred noise-only tests), Keno residual excess
+power reaches near 100\% detection efficiency from signal-to-noise ratio
+(SNR)\,2 to\,12. A deliberately wrong matched-filter template stays near
+$\sim$20\% efficiency on the same injections; a BBH-trained ResNet control
+evaluated off-template plateaus below saturation. On these synthetic bursts
+at 1\% FAR, raw excess power without subtraction also saturates, so the
+injection campaign alone does not separate Keno from raw excess power. On
+published catalog GPS times the residual path can trigger where raw excess
+power does not (e.g.\ GW150914), and a coherent two-detector residual search
+recovers 9 of 18 dual-detector events after rejecting a known glitch near
+GW170817.
 
 Keno is meant to complement morphology-specific binary black hole classifiers,
 not replace them. The contribution is a reproducible software path for
@@ -88,9 +93,12 @@ jobs. Keno is intended as a complementary contribution for unmodeled bursts.
 
 \paragraph{Claim.}
 In this prototype, generative subtraction followed by residual excess-power
-search improves recovery of unknown-morphology bursts at controlled false-alarm
-rate, relative to (i)~excess power on the unsubtracted strain and
-(ii)~matched filtering with a deliberately wrong template.
+search recovers unknown-morphology injections at controlled false-alarm rate,
+strongly outperforming a mismatched matched filter and a BBH-trained ResNet
+control evaluated off-template. Relative to raw excess power, the injection
+campaign at 1\% FAR saturates for both methods; the residual advantage is
+demonstrated on published catalog GPS times (residual-only single-detector
+triggers and production dual-detector coincidence).
 
 \section{Background terms (for software readers)}
 
@@ -295,19 +303,24 @@ catalog follow-up is a consistency check, not a discovery claim.
 \section{Results}
 
 \subsection{Unknown-morphology efficiency}
-Figure~\ref{fig:eff} shows Keno residual EP at 100\% efficiency across
-SNR\,2--12 at 1\% FAR. Raw excess power on unsubtracted strain is less
-efficient on the same injections. Mismatched matched filtering remains near
-$\sim$20\% and never reaches 50\% efficiency. The BBH-trained ResNet control,
-evaluated on these non-BBH bursts, plateaus below saturation --- expected for
-a morphology-specific model outside its training objective.
+Figure~\ref{fig:eff} shows Keno residual EP near 100\% efficiency across
+SNR\,2--12 at 1\% FAR (freeze campaign; Wilson 95\% intervals). On the same
+synthetic injections, raw excess power without subtraction also saturates at
+this FAR, so the plot does not by itself prove a residual advantage over raw
+excess power. Mismatched matched filtering remains near $\sim$20\% and never
+reaches 50\% efficiency. The BBH-trained ResNet control, evaluated on these
+non-BBH bursts, plateaus below saturation --- expected for a
+morphology-specific model outside its training objective. The practical
+residual-vs-raw contrast appears in the catalog follow-up below (e.g.\
+GW150914 residual-only trigger).
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig2_efficiency.png}
   \caption{Detection efficiency vs injected SNR at 1\% FAR on unknown morphology.
-  Baselines include raw excess power, mismatched matched filtering, and a
-  BBH-trained ResNet control evaluated off-template.}
+  Keno residual EP and raw excess power both saturate on these injections;
+  mismatched matched filtering stays low; the BBH-trained ResNet control is
+  evaluated off-template.}
   \label{fig:eff}
 \end{figure}
 
@@ -389,6 +402,9 @@ target family is known.
 
 Known limitations of this prototype include:
 \begin{itemize}
+  \item on the freeze injection campaign at 1\% FAR, raw excess power and Keno
+        residual EP both saturate, so synthetic efficiency alone understates
+        (and does not prove) a residual-vs-raw advantage;
   \item weak single-detector glitch rejection, especially for burst-like
         Gravity Spy classes (Koi Fish, Whistle, Extremely Loud); coincidence
         and the envelope veto do most of that work;

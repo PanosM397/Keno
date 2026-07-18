@@ -5,19 +5,19 @@
 
 ## Hypothesis
 
-Generative denoising isolates unmodeled gravitational-wave bursts better than
-template-based classifiers (e.g. AresGW) by subtracting predicted instrumental
-noise and searching the residual with template-free statistics:
+Generative denoising supports unmodeled gravitational-wave burst search by
+subtracting predicted instrumental noise and searching the residual with
+template-free statistics (complementary to morphology-specific BBH classifiers
+such as AresGW — not a claim of BBH superiority):
 
 ```
-S_clean = S_raw - N_predicted
-detection = excess_power(S_clean)
+R = S_raw - N_hat
+detection = excess_power(R)
 ```
 
 AresGW asks: *"Does this 1 s segment contain a BBH merger?"* (binary classification
 on a fixed morphology). Keno asks: *"What remains after we remove everything the
-model believes is detector noise?"* — the right question for core-collapse supernovae
-and other unmodeled transients.
+model believes is detector noise?"* — the right question for unmodeled transients.
 
 ## Model status
 
@@ -25,7 +25,7 @@ and other unmodeled transients.
 |-------|--------|
 | Checkpoint | loaded |
 | Phase 1 validate (`python -m app.training.validate`) | PASS |
-| Reproducibility freeze | docs/freeze/current — SHA256 `962ffc64162f5ae2…` (2026-07-17-finetuned) |
+| Reproducibility freeze | docs/freeze/current — checkpoint SHA256 `55ce7637…` (label `2026-07-paper-v1`) |
 
 ## Detection calibration (1.0% target FAR)
 
