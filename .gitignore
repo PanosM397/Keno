@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 
+arxiv_abstract.txt
+
 # Python virtual environments (any depth)
 .venv/
 .venv*/
