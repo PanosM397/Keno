@@ -50,6 +50,27 @@ Primary targets: Classical and Quantum Gravity, or Machine Learning: Science and
 Prefer CQG if the software/methods story is the lead; prefer MLST if the
 U-Net + residual-search ML contribution is the lead.
 
+## JOSS (software paper) — waiting period
+
+JOSS short paper draft: [`paper/paper.md`](../../paper/paper.md) (+ `paper/paper.bib`).
+
+**Do not submit yet.** JOSS requires >6 months of public iterative development
+history. Keno's GitHub history begins mid-July 2026; earliest realistic JOSS
+submission is about **January 2027**.
+
+Until then, keep open-source signals healthy:
+
+- [x] OSI license (`LICENSE` MIT)
+- [x] `CONTRIBUTING.md`, `CHANGELOG.md`
+- [x] Minimal CI + unit tests
+- [ ] Tagged GitHub Release (`paper-v1` or later) after more public history
+- [ ] Optional: add ORCID to `paper/paper.md` author metadata
+- [ ] Compile JOSS PDF via GitHub Action `JOSS paper draft` and skim wording
+
+When submitting: use the JOSS form at https://joss.theoj.org — one peer-reviewed
+venue at a time (do not also submit the long methods paper elsewhere in parallel
+unless the journals explicitly allow co-publication).
+
 ## Claim audit (must stay true)
 
 - Complementary to AresGW on unknown morphology — not BBH sensitive-distance superiority.

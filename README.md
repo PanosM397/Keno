@@ -71,3 +71,13 @@ cd ml-engine && python -m app.prove
 ```
 
 Frozen reproducibility artifacts live in [`docs/freeze/current/`](./docs/freeze/current/).
+
+## Citation / preprint
+
+Zenodo preprint (methods + freeze): https://doi.org/10.5281/zenodo.21433068
+
+JOSS software-paper draft (not yet submitted; waiting for JOSS public-history
+gate): [`paper/paper.md`](./paper/paper.md). See
+[`docs/paper/SUBMISSION.md`](./docs/paper/SUBMISSION.md).
+
+Contributions: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
