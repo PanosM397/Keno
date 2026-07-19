@@ -109,3 +109,5 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     checkpoint_loaded: bool
     checkpoint_path: str
+    checkpoint_sha256: str | None = None
+    checkpoint_matches_freeze: bool | None = None
