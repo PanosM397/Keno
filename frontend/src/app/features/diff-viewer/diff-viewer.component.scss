@@ -6,6 +6,35 @@
   overflow: hidden;
 }
 
+.demo-story {
+  flex: 0 0 auto;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid rgba(43, 255, 194, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(43, 255, 194, 0.08) 0%,
+    rgba(43, 255, 194, 0.02) 100%
+  );
+  min-width: 0;
+}
+
+.demo-story-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-residual);
+  margin-bottom: 4px;
+}
+
+.demo-story-text {
+  margin: 0;
+  max-width: 72rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
 .viewer {
   display: flex;
   flex-direction: column;
@@ -704,6 +733,17 @@
   color: var(--color-text-tertiary);
 }
 
+.coincidence-story {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(43, 255, 194, 0.28);
+  border-radius: 6px;
+  background: rgba(43, 255, 194, 0.07);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .coincidence-footer--hint {
   font-size: 0.85em;
   opacity: 0.9;
@@ -753,5 +793,9 @@
   .run-btn {
     justify-self: stretch;
     width: 100%;
+  }
+
+  .demo-story {
+    padding: 8px 12px 10px;
   }
 }

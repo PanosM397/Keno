@@ -48,14 +48,32 @@
     </button>
   </header>
 
+  @if (selectedEventStoryLabel(); as storyLabel) {
+    <div class="demo-story" role="note">
+      <div class="demo-story-label">{{ storyLabel }}</div>
+      @if (selectedEventTip(); as tip) {
+        <p class="demo-story-text">{{ tip }}</p>
+      }
+    </div>
+  }
+
   <div class="workspace">
     <aside class="sidebar">
-      <details class="help">
+      @if (!selectedEventStoryLabel()) {
+        @if (selectedEventTip(); as tip) {
+          <div class="event-tip">
+            <strong>What to look for</strong>
+            <p>{{ tip }}</p>
+          </div>
+        }
+      }
+
+      <details class="help" open>
         <summary>How to read this page</summary>
         <ol>
-          <li>Pick a demo above, search the GWOSC catalog, or set a GPS in Advanced.</li>
-          <li>Press <strong>Run analysis</strong>.</li>
-          <li>Hover charts to inspect values. Scroll to zoom. Dashed line = event time (t=0).</li>
+          <li>Pick a demo above (start with <strong>GW150914</strong>), or search the catalog / Advanced GPS.</li>
+          <li>Press <strong>Run analysis</strong> (cold GWOSC fetch can take a few minutes).</li>
+          <li>Read Production vs Independent in coincidence — then hover charts. Dashed line = event time (t=0).</li>
         </ol>
         <dl class="glossary">
           <dt>Three panes</dt>
@@ -83,7 +101,7 @@
         </dl>
       </details>
 
-      <details class="catalog" open>
+      <details class="catalog">
         <summary>GWOSC event catalog</summary>
         <p class="toggle-hint">
           Search published GWOSC events by name. Demos above stay curated; this loads GPS and public
@@ -211,13 +229,6 @@
           }
         </div>
       </details>
-
-      @if (selectedEventTip(); as tip) {
-        <div class="event-tip">
-          <strong>What to look for</strong>
-          <p>{{ tip }}</p>
-        </div>
-      }
 
       <div class="status" [class.status--error]="!!error()" [class.status--loading]="loading()">
         @if (loading()) {
@@ -473,6 +484,9 @@
             · Raw:
             <strong>{{ coincidenceResult.rawCoincident ? 'Yes' : 'No' }}</strong>
           </p>
+          @if (residualOnlyStory(); as story) {
+            <p class="coincidence-story">{{ story }}</p>
+          }
           <p class="coincidence-footer coincidence-footer--hint">
             Production = coherent EP + lag + envelope. Independent = both IFOs clear the single-detector residual gate (diagnostic only).
           </p>

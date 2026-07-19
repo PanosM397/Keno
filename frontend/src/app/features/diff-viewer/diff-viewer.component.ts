@@ -103,6 +103,8 @@ interface KnownEvent {
   /** Detectors for coherent coincidence; omit to default H1+L1. Empty = skip. */
   coincidenceDetectors?: Detector[];
   coincidenceNote?: string;
+  /** Short headline for the demo story banner (optional). */
+  storyLabel?: string;
   /** Plain-language tip shown while this preset GPS is selected. */
   tip: string;
 }
@@ -115,8 +117,9 @@ const KNOWN_EVENTS: KnownEvent[] = [
     subtitle: 'Historic 2015 discovery',
     gpsTime: 1126259462.4,
     detector: 'H1',
+    storyLabel: 'Showcase: residual-only trigger',
     tip:
-      'Look for a residual spike near t=0. Production Yes with Independent No is normal: Hanford residual is loud; Livingston alone stays below the single-detector gate; the coherent scan still passes.',
+      'After Run analysis, look for a residual spike near t=0. Expect Production Yes and Independent No — Hanford residual is loud, Livingston alone stays below the single-detector gate, and the coherent H1+L1 scan still passes. That is the Keno story: residual search can fire where raw excess power does not.',
   },
   {
     id: 'GW170817',
@@ -124,6 +127,7 @@ const KNOWN_EVENTS: KnownEvent[] = [
     subtitle: 'Also seen as light in the sky',
     gpsTime: 1187008882.4,
     detector: 'H1',
+    storyLabel: 'Showcase: envelope veto',
     tip:
       'Expect an envelope veto, not a dual-IFO detection. Livingston has a huge glitch; coherent EP can look enormous while peak timing fails the glitch gate.',
   },
@@ -137,6 +141,7 @@ const KNOWN_EVENTS: KnownEvent[] = [
     coincidenceDetectors: [],
     coincidenceNote:
       'H1 was offline for GW190425 — dual-detector coincidence is not valid. Use L1 single-detector residual search only (matches the freeze).',
+    storyLabel: 'Showcase: single-detector only',
     tip:
       'Hanford was offline. Use Livingston only — dual-detector coincidence is skipped so the UI cannot invent a false H1+L1 trigger.',
   },
@@ -330,12 +335,19 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
     return findResidualPeakTimeSeconds(this.residualSeries());
   });
 
+  readonly selectedKnownEvent = computed(() => {
+    if (this.syntheticMode()) return undefined;
+    return (
+      knownEventForGps(this.gpsTime()) ??
+      this.knownEvents.find((event) => event.id === this.selectedEventId())
+    );
+  });
+
   readonly selectedEventTip = computed(() => {
     if (this.syntheticMode()) {
       return 'Synthetic mode buries a known burst in fake noise. Compare Step 3 (residual) to Step 4 (ground truth) — they should match in oracle mode.';
     }
-    const known =
-      knownEventForGps(this.gpsTime()) ?? this.knownEvents.find((e) => e.id === this.selectedEventId());
+    const known = this.selectedKnownEvent();
     if (known?.tip) return known.tip;
     const catalogName = this.selectedCatalogName();
     if (catalogName) {
@@ -345,6 +357,24 @@ export class DiffViewerComponent implements OnInit, OnDestroy {
       );
     }
     return null;
+  });
+
+  readonly selectedEventStoryLabel = computed(() => {
+    if (this.syntheticMode()) return 'Synthetic validation';
+    return this.selectedKnownEvent()?.storyLabel ?? null;
+  });
+
+  /** Post-run callout when Production Yes / Independent No (GW150914 pattern). */
+  readonly residualOnlyStory = computed(() => {
+    const coincidence = this.coincidence();
+    if (!coincidence) return null;
+    if (!coincidence.residualCoincident || coincidence.independentResidualCoincident) {
+      return null;
+    }
+    return (
+      'This is the residual-only pattern: Production passed on the coherent scan, but Independent is No ' +
+      'because both IFOs did not clear the single-detector residual gate. Independent is diagnostic only.'
+    );
   });
 
   readonly filteredCatalogEvents = computed(() => {
