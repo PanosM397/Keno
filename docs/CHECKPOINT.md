@@ -41,18 +41,61 @@ Verify only:
 ./scripts/verify_checkpoint.sh
 ```
 
-## Maintainer: publish the freeze `.pt` (one-time)
+## Maintainer: recover from Windows (one-time)
 
-The freeze hash was recorded on the Windows machine that ran the paper freeze.
-If `unet_denoiser.pt` with SHA `55ce7637…` still exists there (or in backup):
+The freeze was recorded on **Windows-10** (`docs/freeze/current/MANIFEST.json`,
+2026-07-17 UTC). The checkpoint was **not** copied into git or Zenodo — only
+its SHA256 was pinned. Expected file size: **1 994 074 bytes**.
 
-1. Copy it to `ml-engine/checkpoints/unet_denoiser.pt`
-2. Confirm: `./scripts/verify_checkpoint.sh`
-3. Create a GitHub Release tagged `paper-v1` and attach `unet_denoiser.pt`
-4. Set the default URL in `ml-engine/scripts/fetch_checkpoint.sh` if needed
-5. Optional: add the same file to a Zenodo **New version** of the preprint
+On the Windows machine where you ran `python -m app.evaluation.freeze_bundle`,
+look for:
 
-Until that asset is online, `fetch_checkpoint.sh` will fail with a clear message.
+```text
+<Keno>\ml-engine\checkpoints\unet_denoiser.pt
+```
+
+Verify before copying (PowerShell):
+
+```powershell
+Get-FileHash .\ml-engine\checkpoints\unet_denoiser.pt -Algorithm SHA256
+# Hash must be: 55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a
+```
+
+Also check: File History, OneDrive, USB backups, old zip exports, or any clone
+of Keno from **before** Jul 17 retrain on the Mac (Mac copies here are **wrong**
+hash — `962ffc64…`, `be953501…`, `4870a0d6…`).
+
+Copy the verified file to this Mac:
+
+```bash
+# after scp / AirDrop / cloud sync
+cp /path/from/windows/unet_denoiser.pt ml-engine/checkpoints/
+cd ml-engine && ./scripts/verify_checkpoint.sh
+```
+
+## Maintainer: publish GitHub Release `paper-v1`
+
+Once the verified file is at `ml-engine/checkpoints/unet_denoiser.pt`:
+
+```bash
+gh auth login   # once
+cd ml-engine
+./scripts/publish_checkpoint_release.sh
+```
+
+That script verifies SHA256, tags `paper-v1` (if missing), pushes the tag, and
+uploads `unet_denoiser.pt` so `./scripts/fetch_checkpoint.sh` works for others.
+
+Manual alternative:
+
+1. `./scripts/verify_checkpoint.sh`
+2. `git tag -a paper-v1 -m "Keno scientific paper freeze 2026-07-paper-v1"`
+3. `git push origin paper-v1`
+4. GitHub → Releases → **paper-v1** → attach `unet_denoiser.pt`
+
+Optional: add the same file to a Zenodo **New version** of the preprint.
+
+Until that asset is online, `fetch_checkpoint.sh` returns **404** with a hint.
 
 ## Alternative: train your own (not paper-reproducible)
 
