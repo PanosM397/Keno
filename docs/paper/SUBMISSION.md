@@ -46,8 +46,11 @@ shifts toward new GW phenomenology (it should not for this freeze).
 
 ## Journals
 
-Primary targets: Classical and Quantum Gravity, or Machine Learning: Science and Technology.
-Prefer CQG if the software/methods story is the lead; prefer MLST if the
+**CQG:** desk-rejected without review (CQG-116722, 2026-07). Do not resubmit the same manuscript.
+
+**Where next:** [`WHERE_NEXT.md`](WHERE_NEXT.md) — JOSS (default after public-history gate) or SoftwareX (optional sooner; APC).
+
+Former targets also included Machine Learning: Science and Technology if the
 U-Net + residual-search ML contribution is the lead.
 
 ## JOSS (software paper) — waiting period
