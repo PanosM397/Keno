@@ -1,43 +1,103 @@
 # Keno — Unmodeled Gravitational Wave Burst Detector
 
-A portfolio-grade, full-stack scientific application for discovering unmodeled gravitational wave bursts (e.g. core-collapse supernovae) in LIGO strain data.
+A portfolio-grade, full-stack scientific application for searching unmodeled
+gravitational-wave bursts in public LIGO strain (GWOSC) after generative noise
+subtraction.
 
 ## Approach: Generative Denoising
 
-Instead of classifying strain data against known templates (binary black hole mergers), this system learns the latent space of instrumental glitches and quantum noise, then generates a mathematical mirror of that noise to subtract it from the raw signal:
+Instead of classifying strain against known templates (binary black hole
+mergers), Keno learns to predict instrumental noise, subtracts it, and searches
+the residual:
 
 ```
-S_clean = S_raw - N_predicted
+R = S_raw - N_predicted
 ```
 
-The residual `S_clean` is what's left over for physicists to inspect for unmodeled anomalies that template-based classifiers (e.g. AresGW) are not designed to find.
+Keno complements morphology-specific BBH classifiers (e.g. AresGW); it does not
+claim to replace them on BBH sensitive distance.
 
 ## Monorepo Layout
 
-| Directory     | Stack                              | Role                                                              |
-| ------------- | ----------------------------------- | ------------------------------------------------------------------ |
-| `/ml-engine`  | Python, PyTorch, FastAPI, `gwpy`    | Generative subtraction model + low-latency inference API           |
-| `/backend`    | Node.js, Express                    | Orchestrator/proxy between the frontend, GWOSC, and the ML engine   |
-| `/frontend`   | Angular                             | Three-pane synchronized diff-viewer (Raw / Predicted Noise / Residual) |
+| Directory    | Stack                           | Role                                                         |
+| ------------ | ------------------------------- | ------------------------------------------------------------ |
+| `/ml-engine` | Python, PyTorch, FastAPI, gwpy  | Generative subtraction + detect / coincidence API            |
+| `/backend`   | Node.js, Express                | Orchestrator / cache between UI, GWOSC path, and ML engine   |
+| `/frontend`  | Angular                         | Three-pane viewer (Raw / Predicted Noise / Residual)         |
 
-## Quickstart (three terminals)
+## First-run (required once)
 
-Ensure a trained checkpoint exists at `ml-engine/checkpoints/unet_denoiser.pt` (required for residual search).
+### 0. Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- ~few GB disk for venv/`node_modules` and optional GWOSC caches
+
+### 1. Model checkpoint (required)
+
+Weights are **not** in git. Paper freeze `2026-07-paper-v1` expects SHA256
+`55ce7637…` — see [`docs/CHECKPOINT.md`](./docs/CHECKPOINT.md).
+
+```bash
+cd ml-engine
+chmod +x scripts/fetch_checkpoint.sh scripts/verify_checkpoint.sh
+./scripts/fetch_checkpoint.sh    # downloads + verifies freeze weights
+# or, if you already have the freeze file:
+#   cp /path/to/unet_denoiser.pt checkpoints/unet_denoiser.pt
+#   ./scripts/verify_checkpoint.sh
+```
+
+If `fetch_checkpoint.sh` fails, the freeze `.pt` is not published on the
+`paper-v1` GitHub Release yet — recover it (see `docs/CHECKPOINT.md`) or train
+your own (not paper-reproducible).
+
+Confirm later with: `curl -s http://127.0.0.1:8000/health | jq` →
+`checkpoint_loaded: true` and `checkpoint_matches_freeze: true`.
+
+### 2. Install services
+
+**ML engine**
+
+```bash
+cd ml-engine
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env               # first time only
+```
+
+**Backend**
+
+```bash
+cd backend
+cp .env.example .env               # first time only
+npm install
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm install
+```
+
+## Run (three terminals)
+
+Prefer serving the ML engine **without** `--reload` on macOS (PyTorch + reload
+can crash).
 
 **Terminal 1 — ML engine** (port 8000):
 
 ```bash
 cd ml-engine
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-uvicorn main:app --reload
+source .venv/bin/activate
+uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
 **Terminal 2 — Backend** (port 4000):
 
 ```bash
 cd backend
-cp .env.example .env        # first time only
-npm install                 # first time only
 npm run dev
 ```
 
@@ -45,27 +105,39 @@ npm run dev
 
 ```bash
 cd frontend
-npm install                 # first time only
 npm start
 ```
 
-Open [http://localhost:4200](http://localhost:4200), pick a preset event (e.g. GW150914), and press **Run analysis**.
+Open [http://localhost:4200](http://localhost:4200), pick **GW150914**, press
+**Run analysis**. Cold GWOSC downloads can take 1–3 minutes per detector; repeat
+requests are cached.
 
-Per-service details: [`ml-engine/README.md`](./ml-engine/README.md), [`backend/README.md`](./backend/README.md), [`frontend/README.md`](./frontend/README.md).
+Per-service details: [`ml-engine/README.md`](./ml-engine/README.md),
+[`backend/README.md`](./backend/README.md), [`frontend/README.md`](./frontend/README.md).
 
 ## Data Flow
 
-1. The Angular frontend requests a strain segment for a given GPS timestamp.
-2. The Express backend checks its in-memory cache; on a miss, it forwards the request to the ML engine.
-3. The ML engine (`/ml-engine`) fetches raw strain via `gwpy`/GWOSC, runs it through the 1D U-Net denoiser, and returns `raw_strain`, `predicted_noise`, and `residual` arrays.
-4. The backend caches and relays the response to the frontend, which renders all three series in synchronized visualizers.
+1. Angular requests a strain segment for a GPS time.
+2. Express checks its in-memory cache; on a miss, forwards to the ML engine.
+3. ML engine fetches open strain via `gwpy`/GWOSC, forms `R`, returns raw /
+   predicted noise / residual (and detect / coincidence when requested).
+4. Frontend plots the three series and coincidence summary.
 
 ## Scientific validation
 
-Keno is evaluated against template-based baselines (including AresGW-like fixed-template matched filtering) using injection campaigns on real LIGO background noise. See [`docs/SCIENTIFIC_VALIDATION.md`](./docs/SCIENTIFIC_VALIDATION.md) and run:
+See [`docs/SCIENTIFIC_VALIDATION.md`](./docs/SCIENTIFIC_VALIDATION.md) and:
 
 ```bash
-cd ml-engine && python -m app.prove
+cd ml-engine && source .venv/bin/activate && python -m app.prove
 ```
 
-Frozen reproducibility artifacts live in [`docs/freeze/current/`](./docs/freeze/current/).
+Frozen artifacts: [`docs/freeze/current/`](./docs/freeze/current/).
+
+## Citation / preprint
+
+Zenodo preprint: https://doi.org/10.5281/zenodo.21433068
+
+JOSS draft (not submitted yet): [`paper/paper.md`](./paper/paper.md) — see
+[`docs/paper/SUBMISSION.md`](./docs/paper/SUBMISSION.md).
+
+Contributions: [`CONTRIBUTING.md`](./CONTRIBUTING.md).

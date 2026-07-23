@@ -226,6 +226,21 @@ def write_outputs(
             ]
         )
 
+    lines.extend(
+        [
+            "How to read:",
+            "- Independent residual coincidence: BOTH detectors clear the single-IFO residual EP",
+            "  threshold on their own. Diagnostic only — not the production rule.",
+            "- Production residual coincidence: coherent lag-scan clears the dual-IFO coherent",
+            "  EP threshold AND best lag is within ±10 ms AND |envelope peak dt| ≤ 50 ms.",
+            "  Can be YES when Independent is NO (e.g. GW150914: loud H1 residual, quieter L1,",
+            "  coherent combination still passes).",
+            "- Envelope VETO (e.g. GW170817): coherent EP can look huge from a single-IFO",
+            "  glitch; mismatched residual envelope peaks reject the candidate.",
+            "",
+        ]
+    )
+
     summary_path = output_dir / "coincidence_summary.txt"
     summary_path.write_text("\n".join(lines), encoding="utf-8")
     logger.info("Wrote %s", summary_path)

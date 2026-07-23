@@ -36,7 +36,7 @@ async function getDenoisedStrain(req, res, next) {
 
 async function getEventCatalog(req, res, next) {
   try {
-    const { catalog } = req.query;
+    const catalog = req.query.catalog || 'GWTC';
     const cached = cacheService.get('event-catalog', { catalog });
     if (cached) {
       return res.json({ ...cached, cached: true });
@@ -129,4 +129,21 @@ async function getStrainCoincidence(req, res, next) {
   }
 }
 
-module.exports = { getDenoisedStrain, getStrainDetection, getStrainCoincidence, getEventCatalog, getEventMetadata };
+async function clearStrainCache(req, res, next) {
+  try {
+    cacheService.clear();
+    logger.info('Strain response cache cleared');
+    return res.json({ cleared: true });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = {
+  getDenoisedStrain,
+  getStrainDetection,
+  getStrainCoincidence,
+  getEventCatalog,
+  getEventMetadata,
+  clearStrainCache,
+};

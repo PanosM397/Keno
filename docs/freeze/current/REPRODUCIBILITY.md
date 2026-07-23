@@ -6,19 +6,29 @@
 
 This directory pins the scientific artifacts behind
 [`SCIENTIFIC_VALIDATION.md`](../SCIENTIFIC_VALIDATION.md) for portfolio / preprint use.
-The trained weights are **not** stored in git (large / local); verify them with the hash above.
+The trained weights are **not** stored in git; see
+[`docs/CHECKPOINT.md`](../../CHECKPOINT.md) for download / publish steps.
+The expected hash is also in [`checkpoint.sha256`](checkpoint.sha256).
 
 ## Verify checkpoint
 
 ```bash
-# Linux / macOS
-sha256sum ml-engine/checkpoints/unet_denoiser.pt
+cd ml-engine
+./scripts/verify_checkpoint.sh
 
-# Windows PowerShell
-Get-FileHash ml-engine/checkpoints/unet_denoiser.pt -Algorithm SHA256
+# or manually:
+#   sha256sum checkpoints/unet_denoiser.pt          # Linux
+#   shasum -a 256 checkpoints/unet_denoiser.pt      # macOS
+#   Get-FileHash checkpoints/unet_denoiser.pt -Algorithm SHA256  # Windows
 ```
 
 Expected: `55ce7637e14dd3558d4e9ede025a5e42e1ca25048a715bd87eb4f0fd028cd49a`
+
+Download (after the `paper-v1` Release asset exists):
+
+```bash
+cd ml-engine && ./scripts/fetch_checkpoint.sh
+```
 
 ## Reproduce (venv required)
 

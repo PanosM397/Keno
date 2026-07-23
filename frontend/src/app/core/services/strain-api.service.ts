@@ -4,6 +4,8 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import {
+  CatalogEventDetail,
+  CatalogEventSummary,
   CoincidenceResult,
   DenoiseQuery,
   DenoisedStrainResult,
@@ -74,6 +76,19 @@ interface CoincidenceResponse {
   cached?: boolean;
 }
 
+interface GwoscCatalogEventRaw {
+  commonName?: string;
+  version?: number;
+  GPS?: number;
+  'catalog.shortName'?: string;
+  strain?: Array<{ detector?: string }>;
+}
+
+interface GwoscCatalogResponse {
+  events?: Record<string, GwoscCatalogEventRaw>;
+  cached?: boolean;
+}
+
 export interface BackendHealth {
   status: string;
   service?: string;
@@ -136,6 +151,76 @@ export class StrainApiService {
     return this.http
       .get<CoincidenceResponse>(`${this.baseUrl}/strain/detect/coincidence`, { params })
       .pipe(map((response) => this.toCoincidenceResult(response)));
+  }
+
+  clearStrainCache(): Observable<{ cleared: boolean }> {
+    return this.http.post<{ cleared: boolean }>(`${this.baseUrl}/strain/cache/clear`, {});
+  }
+
+  getEventCatalog(catalog = 'GWTC'): Observable<CatalogEventSummary[]> {
+    const params = new HttpParams().set('catalog', catalog);
+    return this.http
+      .get<GwoscCatalogResponse>(`${this.baseUrl}/strain/events`, { params })
+      .pipe(map((response) => this.toCatalogEvents(response, catalog)));
+  }
+
+  getEventMetadata(eventName: string): Observable<CatalogEventDetail> {
+    return this.http
+      .get<GwoscCatalogResponse>(`${this.baseUrl}/strain/events/${encodeURIComponent(eventName)}`)
+      .pipe(map((response) => this.toCatalogEventDetail(response, eventName)));
+  }
+
+  private toCatalogEvents(response: GwoscCatalogResponse, fallbackCatalog: string): CatalogEventSummary[] {
+    const events = response.events ?? {};
+    const bestByName = new Map<string, CatalogEventSummary>();
+
+    for (const [versionKey, raw] of Object.entries(events)) {
+      const name = raw.commonName || versionKey.replace(/-v\d+$/i, '');
+      const gpsTime = Number(raw.GPS);
+      if (!name || !Number.isFinite(gpsTime)) continue;
+
+      const version = Number(raw.version) || 0;
+      const candidate: CatalogEventSummary = {
+        name,
+        versionKey,
+        gpsTime,
+        catalog: raw['catalog.shortName'] || fallbackCatalog,
+        version,
+      };
+      const existing = bestByName.get(name);
+      if (!existing || candidate.version >= existing.version) {
+        bestByName.set(name, candidate);
+      }
+    }
+
+    return [...bestByName.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private toCatalogEventDetail(response: GwoscCatalogResponse, eventName: string): CatalogEventDetail {
+    const events = response.events ?? {};
+    const entries = Object.entries(events);
+    if (!entries.length) {
+      throw new Error(`No GWOSC metadata for ${eventName}`);
+    }
+
+    entries.sort((a, b) => Number(b[1].version ?? 0) - Number(a[1].version ?? 0));
+    const [versionKey, raw] = entries[0];
+    const detectors = [
+      ...new Set(
+        (raw.strain ?? [])
+          .map((entry) => entry.detector)
+          .filter((detector): detector is Detector => detector === 'H1' || detector === 'L1' || detector === 'V1'),
+      ),
+    ];
+
+    return {
+      name: raw.commonName || eventName,
+      versionKey,
+      gpsTime: Number(raw.GPS),
+      catalog: raw['catalog.shortName'] || '',
+      version: Number(raw.version) || 0,
+      detectors,
+    };
   }
 
   private toCoincidenceResult(response: CoincidenceResponse): CoincidenceResult {

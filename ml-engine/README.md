@@ -9,8 +9,11 @@ python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn main:app --reload
+./scripts/fetch_checkpoint.sh   # freeze weights; see ../docs/CHECKPOINT.md
+uvicorn main:app --host 127.0.0.1 --port 8000
 ```
+
+`GET /health` reports `checkpoint_loaded` and `checkpoint_matches_freeze`.
 
 **Important:** Always activate `.venv` before running training, evaluation, or `app.prove`.
 System `python3` does not have project dependencies (e.g. `gwpy`).

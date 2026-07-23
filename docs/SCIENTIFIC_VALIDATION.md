@@ -162,6 +162,12 @@ Noise-only H1+L1 coincidence (50 trials, cached dual-detector GPS):
   Independent residual coincidence rate: 0.0%
   Production coherent residual coincidence rate: 2.0%
 
+How to read (coincidence flags):
+- Independent = both IFOs clear the single-detector residual EP threshold (diagnostic).
+- Production = coherent EP + lag gate + envelope veto (live detection rule).
+- GW150914: Independent no, Production yes — quieter L1 residual is expected; coherent scan still recovers the event.
+- GW170817: envelope VETO rejects L1 glitch contamination despite huge coherent EP.
+
 
 ## O3 glitch-catalog stress test
 
@@ -305,6 +311,7 @@ How to read:
 - **excess_power (raw)** — cWB-style search without subtraction. Keno wins if keno_residual_ep reaches 50% efficiency at lower SNR than raw excess power.
 - **O3 glitch stress** — Gravity Spy instrumental glitches. High residual survival is expected when glitches are burst-like; production defense is multi-detector coincidence, not single-detector kill rate.
 - **Production coincidence** — gated on best coherent lag within +/-max_lag_ms, envelope peak dt within +/-max_envelope_dt_ms, and coherent EP above the dual-IFO coherent threshold (separate from single-IFO residual EP).
+- **Independent residual coincidence** — both IFOs independently clear the single-detector residual EP threshold. Diagnostic only; production does **not** require this. GW150914 is the canonical example: Independent=no, Production=yes (loud H1 residual, quieter L1, coherent combination still passes).
 - **cWB follow-up** — published cWB/GWTC GPS times run through Keno coherent residual coincidence. Consistency check against the unmodeled-burst literature, not a discovery claim.
 
 ## Key headline metrics (1% FAR)

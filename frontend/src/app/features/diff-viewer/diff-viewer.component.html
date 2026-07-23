@@ -32,25 +32,132 @@
       }
     </div>
 
-    <button class="run-btn" (click)="fetch()" [disabled]="loading()">
-      @if (loading()) {
-        <span class="run-btn-label">Running…</span>
-        <span class="run-btn-elapsed mono">{{ formattedElapsed() }}</span>
+    <button
+      class="run-btn"
+      (click)="fetch()"
+      [disabled]="loading() || coincidenceLoading() || catalogSelecting()"
+    >
+      @if (loading() || coincidenceLoading() || catalogSelecting()) {
+        <span class="run-btn-label">{{ catalogSelecting() ? 'Loading event…' : 'Running…' }}</span>
+        @if (!catalogSelecting()) {
+          <span class="run-btn-elapsed mono">{{ formattedElapsed() }}</span>
+        }
       } @else {
         Run analysis
       }
     </button>
   </header>
 
+  @if (selectedEventStoryLabel(); as storyLabel) {
+    <div class="demo-story" role="note">
+      <div class="demo-story-label">{{ storyLabel }}</div>
+      @if (selectedEventTip(); as tip) {
+        <p class="demo-story-text">{{ tip }}</p>
+      }
+    </div>
+  }
+
   <div class="workspace">
     <aside class="sidebar">
-      <details class="help">
+      @if (!selectedEventStoryLabel()) {
+        @if (selectedEventTip(); as tip) {
+          <div class="event-tip">
+            <strong>What to look for</strong>
+            <p>{{ tip }}</p>
+          </div>
+        }
+      }
+
+      <details class="help" open>
         <summary>How to read this page</summary>
         <ol>
-          <li>Pick an event above.</li>
-          <li>Press <strong>Run analysis</strong>.</li>
-          <li>Hover any chart to inspect values. Scroll to zoom.</li>
+          <li>Pick a demo above (start with <strong>GW150914</strong>), or search the catalog / Advanced GPS.</li>
+          <li>Press <strong>Run analysis</strong> (cold GWOSC fetch can take a few minutes).</li>
+          <li>Read Production vs Independent in coincidence — then hover charts. Dashed line = event time (t=0).</li>
         </ol>
+        <dl class="glossary">
+          <dt>Three panes</dt>
+          <dd>
+            Raw strain <span class="mono">S_raw</span>, predicted noise
+            <span class="mono">N̂</span>, residual
+            <span class="mono">R = S_raw − N̂</span>.
+          </dd>
+          <dt>Blind search</dt>
+          <dd>
+            Template-free excess power on the residual, compared to a noise-calibrated FAR threshold.
+            A residual-only trigger means subtraction revealed energy that raw strain missed.
+          </dd>
+          <dt>Production</dt>
+          <dd>
+            Dual-detector rule: coherent residual EP + lag within light-travel window + envelope timing veto.
+          </dd>
+          <dt>Independent</dt>
+          <dd>
+            Both IFOs clear the single-detector residual gate on their own. Diagnostic only — not required for
+            Production (e.g. GW150914).
+          </dd>
+          <dt>Raw coincidence</dt>
+          <dd>Both detectors trigger on unsubtracted strain excess power.</dd>
+        </dl>
+      </details>
+
+      <details class="catalog">
+        <summary>GWOSC event catalog</summary>
+        <p class="toggle-hint">
+          Search published GWOSC events by name. Demos above stay curated; this loads GPS and public
+          detectors from the catalog.
+        </p>
+        <div class="field">
+          <span class="field-label">Catalog</span>
+          <select [ngModel]="catalogId()" (ngModelChange)="onCatalogIdChange($event)">
+            @for (option of catalogOptions; track option.id) {
+              <option [value]="option.id">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">Search</span>
+          <input
+            type="search"
+            placeholder="e.g. GW190521 or GPS"
+            [ngModel]="catalogQuery()"
+            (ngModelChange)="catalogQuery.set($event)"
+          />
+        </div>
+        @if (catalogLoading()) {
+          <p class="toggle-hint">Loading catalog…</p>
+        } @else if (catalogError()) {
+          <p class="catalog-error">{{ catalogError() }}</p>
+          <button type="button" class="action-btn" (click)="loadCatalog()">Retry catalog</button>
+        } @else if (!filteredCatalogEvents().length) {
+          <p class="toggle-hint">No events match that search.</p>
+        } @else {
+          <ul class="catalog-list">
+            @for (event of filteredCatalogEvents(); track event.versionKey) {
+              <li>
+                <button
+                  type="button"
+                  class="catalog-item"
+                  [class.catalog-item--active]="selectedCatalogName() === event.name"
+                  [disabled]="catalogSelecting() || loading() || coincidenceLoading()"
+                  (click)="selectCatalogEvent(event)"
+                >
+                  <span class="catalog-item-name mono">{{ event.name }}</span>
+                  <span class="catalog-item-gps mono">{{ event.gpsTime }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+          @if (catalogEvents().length > filteredCatalogEvents().length) {
+            <p class="toggle-hint">
+              Showing {{ filteredCatalogEvents().length }} of {{ catalogEvents().length }} — refine the
+              search to narrow the list.
+            </p>
+          }
+        }
+        @if (catalogSelectWarning(); as warning) {
+          <p class="catalog-error">{{ warning }}</p>
+        }
       </details>
 
       <details class="advanced">
@@ -80,7 +187,13 @@
         }
         <div class="field">
           <span class="field-label">Timestamp</span>
-          <input class="mono" type="number" step="0.1" [ngModel]="gpsTime()" (ngModelChange)="gpsTime.set($event)" />
+          <input
+            class="mono"
+            type="number"
+            step="0.1"
+            [ngModel]="gpsTime()"
+            (ngModelChange)="onGpsTimeChange($event)"
+          />
         </div>
         <div class="field">
           <span class="field-label">Observatory</span>
@@ -90,7 +203,8 @@
             <option value="V1">Virgo (V1) — single-detector only</option>
           </select>
           <p class="toggle-hint">
-            Charts use the selected observatory. Coherent coincidence always runs H1+L1 (Virgo is not in the lag-scan yet).
+            Charts use the selected observatory. Coincidence uses H1+L1 when both
+            are valid for the GPS time; single-detector presets (e.g. GW190425) skip it.
           </p>
         </div>
         <div class="field">
@@ -100,6 +214,19 @@
             <option [value]="8">8 seconds</option>
             <option [value]="16">16 seconds</option>
           </select>
+        </div>
+        <div class="field">
+          <button
+            type="button"
+            class="action-btn"
+            (click)="clearBackendCache()"
+            [disabled]="cacheClearing()"
+          >
+            {{ cacheClearing() ? 'Clearing…' : 'Clear backend cache' }}
+          </button>
+          @if (cacheMessage(); as msg) {
+            <p class="toggle-hint">{{ msg }}</p>
+          }
         </div>
       </details>
 
@@ -145,8 +272,26 @@
         <div class="meta">{{ resultSummary() }}</div>
       }
 
+      @if (staleResultWarning(); as stale) {
+        <div class="status status--warning">{{ stale }}</div>
+      }
+
       @if (coincidenceWarning(); as warning) {
-        <div class="status status--warning">{{ warning }}</div>
+        <div class="status status--warning">
+          <p>{{ warning }}</p>
+          @if (showRetryCoincidence()) {
+            <button type="button" class="action-btn action-btn--inline" (click)="retryCoincidence()">
+              Retry coincidence
+            </button>
+          }
+        </div>
+      }
+
+      @if (coincidenceLoading()) {
+        <div class="status status--info">
+          Fetching multi-detector coincidence (second observatory download)…
+          <span class="status-elapsed mono">{{ formattedElapsed() }}</span>
+        </div>
       }
 
       @if (resultDiagnostics(); as diagnostics) {
@@ -217,7 +362,12 @@
             >
               {{ summary.verdict }}
             </p>
-            <p class="detection-far">{{ summary.farLabel }} · keno_residual_ep · noise-calibrated</p>
+            @if (residualAdvantageLine(); as advantage) {
+              <p class="detection-advantage">{{ advantage }}</p>
+            }
+            <p class="detection-far">
+              {{ summary.farLabel }} · keno_residual_ep · noise-calibrated
+            </p>
             <p class="detection-calibration-note">{{ summary.calibrationNote }}</p>
           }
           <div class="detection-cards">
@@ -245,6 +395,16 @@
             </div>
           </div>
           <dl class="diagnostics-grid mono">
+            <dt>FAR target</dt>
+            <dd>{{ formatPercent(detection.falseAlarmRate) }}</dd>
+            <dt>Raw threshold</dt>
+            <dd>{{ formatExcessPower(detection.thresholds.excessPowerRaw) }}</dd>
+            <dt>Residual threshold</dt>
+            <dd>{{ formatExcessPower(detection.thresholds.excessPowerResidual) }}</dd>
+            <dt>Raw % of thr</dt>
+            <dd>{{ formatPercentValue(thresholdPercent(detection.rawExcessPower, detection.thresholds.excessPowerRaw)) }}</dd>
+            <dt>Res % of thr</dt>
+            <dd>{{ formatPercentValue(thresholdPercent(detection.residualExcessPower, detection.thresholds.excessPowerResidual)) }}</dd>
             <dt>Residual / raw EP</dt>
             <dd>{{ formatStat(detection.excessPowerRatio) }}</dd>
             <dt>Checkpoint</dt>
@@ -257,7 +417,7 @@
 
       @if (coincidence(); as coincidenceResult) {
         <details class="coincidence" open>
-          <summary>H1 + L1 coincidence</summary>
+          <summary>{{ coincidencePanelTitle() }}</summary>
           @if (coincidenceSummary(); as summary) {
             <p
               class="coincidence-verdict"
@@ -272,17 +432,25 @@
                 <th>Detector</th>
                 <th>Raw EP</th>
                 <th>Res EP</th>
+                <th>Res % thr</th>
                 <th>Raw</th>
                 <th>Residual</th>
               </tr>
             </thead>
             <tbody>
-              @for (row of coincidenceResult.detectors; track row.detector) {
+              @for (row of coincidenceDetectorRows(); track row.detector) {
                 <tr [class.coincidence-row--unavailable]="!row.available">
                   <td>{{ row.detector }}</td>
                   @if (row.available) {
                     <td>{{ formatExcessPower(row.rawExcessPower ?? 0) }}</td>
                     <td>{{ formatExcessPower(row.residualExcessPower ?? 0) }}</td>
+                    <td>
+                      {{
+                        row.residualThresholdPercent !== null
+                          ? formatPercentValue(row.residualThresholdPercent)
+                          : '—'
+                      }}
+                    </td>
                     <td [class.coincidence-cell--on]="row.rawDetected">
                       {{ row.rawDetected ? 'Trigger' : 'No' }}
                     </td>
@@ -290,7 +458,7 @@
                       {{ row.residualDetected ? 'Trigger' : 'No' }}
                     </td>
                   } @else {
-                    <td colspan="4">{{ row.error ?? 'Unavailable' }}</td>
+                    <td colspan="5">{{ row.error ?? 'Unavailable' }}</td>
                   }
                 </tr>
               }
@@ -300,8 +468,10 @@
             <p class="coincidence-footer mono">
               Coherent EP {{ formatExcessPower(coherent.coherentExcessPower) }}
               · lag {{ coherent.bestLagMs >= 0 ? '+' : '' }}{{ coherent.bestLagMs.toFixed(1) }} ms
+              · polarity {{ coherent.bestPolarity >= 0 ? '+' : '' }}{{ coherent.bestPolarity }}
               · peak dt {{ coherent.peakDtMs.toFixed(1) }} ms
-              · timing {{ coherent.timingOk ? 'ok' : 'veto' }}
+              · timing {{ coherent.timingOk ? 'ok' : 'veto' }} (±{{ coherent.maxLagMs }} ms)
+              · envelope {{ coherent.envelopeOk ? 'ok' : 'veto' }} (±{{ coherent.maxEnvelopeDtMs }} ms)
             </p>
           }
           <p class="coincidence-footer">
@@ -313,6 +483,12 @@
             <strong>{{ coincidenceResult.independentResidualCoincident ? 'Yes' : 'No' }}</strong>
             · Raw:
             <strong>{{ coincidenceResult.rawCoincident ? 'Yes' : 'No' }}</strong>
+          </p>
+          @if (residualOnlyStory(); as story) {
+            <p class="coincidence-story">{{ story }}</p>
+          }
+          <p class="coincidence-footer coincidence-footer--hint">
+            Production = coherent EP + lag + envelope. Independent = both IFOs clear the single-detector residual gate (diagnostic only).
           </p>
         </details>
       }
@@ -328,6 +504,7 @@
         [points]="rawSeries()"
         [loading]="loading()"
         [loadingMessage]="loadingStatusMessage()"
+        [markEventTime]="markEventTime()"
       />
       <app-chart-panel
         [step]="2"
@@ -338,6 +515,7 @@
         [points]="noiseSeries()"
         [loading]="loading()"
         [loadingMessage]="loadingStatusMessage()"
+        [markEventTime]="markEventTime()"
       />
       <app-chart-panel
         [step]="3"
@@ -348,6 +526,9 @@
         [points]="residualSeries()"
         [loading]="loading()"
         [loadingMessage]="loadingStatusMessage()"
+        [markEventTime]="markEventTime()"
+        [peakTimeSeconds]="residualPeakTimeSeconds()"
+        peakLabel="residual peak"
       />
       @if (groundTruthSeries().length) {
         <app-chart-panel

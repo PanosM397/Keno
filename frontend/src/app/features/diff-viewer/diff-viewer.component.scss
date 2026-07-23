@@ -6,6 +6,35 @@
   overflow: hidden;
 }
 
+.demo-story {
+  flex: 0 0 auto;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid rgba(43, 255, 194, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(43, 255, 194, 0.08) 0%,
+    rgba(43, 255, 194, 0.02) 100%
+  );
+  min-width: 0;
+}
+
+.demo-story-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-residual);
+  margin-bottom: 4px;
+}
+
+.demo-story-text {
+  margin: 0;
+  max-width: 72rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
 .viewer {
   display: flex;
   flex-direction: column;
@@ -151,14 +180,16 @@
 }
 
 .help,
-.advanced {
+.advanced,
+.catalog {
   font-size: 12px;
   color: var(--color-text-secondary);
   min-width: 0;
 }
 
 .help summary,
-.advanced summary {
+.advanced summary,
+.catalog summary {
   cursor: pointer;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -168,6 +199,146 @@
   margin: 8px 0 0;
   padding-left: 18px;
   line-height: 1.5;
+}
+
+.catalog-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.catalog-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-item:last-child {
+  border-bottom: 0;
+}
+
+.catalog-item:hover:not(:disabled) {
+  background: rgba(43, 255, 194, 0.06);
+  color: var(--color-residual);
+}
+
+.catalog-item--active {
+  background: rgba(43, 255, 194, 0.1);
+  color: var(--color-residual);
+}
+
+.catalog-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.catalog-item-name {
+  font-weight: 600;
+}
+
+.catalog-item-gps {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.catalog-error {
+  margin: 8px 0;
+  color: var(--color-danger);
+  line-height: 1.4;
+}
+
+.glossary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+}
+
+.glossary dt {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.glossary dd {
+  margin: 0;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.glossary .mono {
+  font-family: ui-monospace, SF Mono, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.event-tip {
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border: 1px solid rgba(43, 255, 194, 0.28);
+  border-radius: 6px;
+  background: rgba(43, 255, 194, 0.06);
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.event-tip strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-residual);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.event-tip p {
+  margin: 0;
+}
+
+.action-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.action-btn:hover:not(:disabled) {
+  border-color: rgba(43, 255, 194, 0.45);
+  color: var(--color-residual);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn--inline {
+  margin-top: 8px;
+}
+
+.detection-advantage {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-residual);
 }
 
 .field {
@@ -323,6 +494,11 @@
 .status--warning {
   border-color: rgba(232, 176, 88, 0.55);
   color: #e8b058;
+}
+
+.status--info {
+  border-color: rgba(43, 255, 194, 0.35);
+  color: var(--color-text-secondary);
 }
 
 .meta {
@@ -557,6 +733,22 @@
   color: var(--color-text-tertiary);
 }
 
+.coincidence-story {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(43, 255, 194, 0.28);
+  border-radius: 6px;
+  background: rgba(43, 255, 194, 0.07);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.coincidence-footer--hint {
+  font-size: 0.85em;
+  opacity: 0.9;
+}
+
 .panels {
   display: flex;
   flex-direction: column;
@@ -601,5 +793,9 @@
   .run-btn {
     justify-self: stretch;
     width: 100%;
+  }
+
+  .demo-story {
+    padding: 8px 12px 10px;
   }
 }

@@ -30,7 +30,7 @@ def fig_pipeline() -> Path:
     boxes = [
         (0.3, 1.0, "Raw strain\nS_raw"),
         (2.3, 1.0, "U-Net noise\nN_hat"),
-        (4.3, 1.0, "Residual\nS_raw - N_hat"),
+        (4.3, 1.0, "Residual\nR = S_raw - N_hat"),
         (6.3, 1.0, "Coherent EP\n+ lag gate"),
         (8.3, 1.0, "Envelope\nveto"),
     ]
