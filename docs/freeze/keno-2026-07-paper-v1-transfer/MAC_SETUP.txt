@@ -1,0 +1,44 @@
+Keno freeze 2026-07-paper-v1 — Mac setup
+========================================
+
+This bundle contains:
+  checkpoints/unet_denoiser.pt   (freeze weights, SHA256 55ce7637…)
+  freeze-current/                (pinned evaluation artifacts + manifest)
+
+Option A — GitHub (recommended)
+---------------------------------
+git clone https://github.com/PanosM397/Keno.git
+cd Keno/ml-engine
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+chmod +x scripts/fetch_checkpoint.sh scripts/verify_checkpoint.sh
+./scripts/fetch_checkpoint.sh
+
+Option B — This zip (offline / AirDrop)
+---------------------------------------
+git clone https://github.com/PanosM397/Keno.git
+cd Keno
+cp /path/to/checkpoints/unet_denoiser.pt ml-engine/checkpoints/
+cd ml-engine && ./scripts/verify_checkpoint.sh
+
+Run the demo (three terminals)
+------------------------------
+# Terminal 1 — ML engine (port 8000)
+cd ml-engine && source .venv/bin/activate
+uvicorn main:app --host 127.0.0.1 --port 8000
+
+# Terminal 2 — Backend (port 4000)
+cd backend && npm install && npm run dev
+
+# Terminal 3 — Frontend (port 4200)
+cd frontend && npm install && npm start
+
+Open http://localhost:4200 → GW150914 → Run analysis.
+First GWOSC download can take 1–3 minutes per detector.
+
+Health check:
+  curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+Expect: checkpoint_loaded true, checkpoint_matches_freeze true
+
+Release URL:
+  https://github.com/PanosM397/Keno/releases/tag/paper-v1

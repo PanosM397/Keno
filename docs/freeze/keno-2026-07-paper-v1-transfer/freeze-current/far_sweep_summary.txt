@@ -1,0 +1,39 @@
+Keno false-alarm rate sweep summary
+Morphology: unknown
+SNR grid: 2.0 – 12.0 (step 2.0)
+Trials per SNR (per seed): 15
+False-alarm trials (per seed): 100
+Seeds: 42, 43
+
+SNR @ 50% efficiency and achieved false-alarm rate by method:
+
+  Target FAR            Method   SNR@50%    Actual FAR    Keno overlap
+----------------------------------------------------------------------
+       0.1%         oracle_mf      2.00           n/a                
+       0.1%     mismatched_mf       n/a          1.0%                
+       0.1%      excess_power      2.00          1.0%                
+       0.1%  keno_residual_ep      2.00          1.0%                
+       0.1%              keno      2.00          1.0%          0.9996
+       0.1%      aresgw_class      2.00          1.0%                
+
+       1.0%         oracle_mf      2.00           n/a                
+       1.0%     mismatched_mf       n/a          1.0%                
+       1.0%      excess_power      2.00          1.0%                
+       1.0%  keno_residual_ep      2.00          1.0%                
+       1.0%              keno      2.00          1.0%          0.9996
+       1.0%      aresgw_class      2.00          1.0%                
+
+      10.0%         oracle_mf      2.00           n/a                
+      10.0%     mismatched_mf       n/a         10.0%                
+      10.0%      excess_power      2.00         10.0%                
+      10.0%  keno_residual_ep      2.00         10.0%                
+      10.0%              keno      2.00         10.0%          0.9996
+      10.0%      aresgw_class      2.00         10.0%                
+
+Notes:
+- Keno overlap (keno) uses fixed overlap threshold (0.75) — eval-only, requires injected ground truth.
+- Keno + residual excess power (keno_residual_ep) is the production detection path.
+- Keno noise-only FAR uses residual RMS ratio threshold calibrated per target FAR.
+- Mismatched MF and excess-power thresholds are calibrated on noise-only trials at each target FAR.
+- AresGW-class is a BBH-trained 1D ResNet (Nousi et al. objective); off-template on unknown morphology.
+

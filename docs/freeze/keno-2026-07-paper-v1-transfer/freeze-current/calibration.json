@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-07-17T00:38:18.838107+00:00",
+  "false_alarm_rate": 0.01,
+  "noise_trials": 300,
+  "morphology": "unknown",
+  "window_seconds": 4.0,
+  "checkpoint_loaded": true,
+  "excess_power_raw": 482.6950993350567,
+  "excess_power_residual": 4004.5755146511574,
+  "mismatched_mf": 4.336830035373788,
+  "keno_noise_rms_ratio": 0.04844261911716977,
+  "residual_ep_artifact_trim_fraction": 0.01,
+  "calibration_note": "Noise-only GWOSC background at 1.0% target FAR. Residual excess-power threshold trims the upper 1% of subtraction-glitched trials before calibration. Coherent threshold (percentile) uses envelope-gated dual-IFO noise (23/1500 gated; empirical joint FAR 0.07%).",
+  "excess_power_coherent": 173.09218288671786,
+  "coherent_noise_trials": 1500,
+  "coherent_envelope_ok_trials": 23,
+  "coherent_gated_max_ep": 191.29301786945422,
+  "coherent_empirical_far": 0.0006666666666666666,
+  "coherent_threshold_rule": "percentile"
+}

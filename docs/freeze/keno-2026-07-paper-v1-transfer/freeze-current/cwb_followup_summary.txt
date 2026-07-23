@@ -1,0 +1,96 @@
+Keno cWB / GWTC blind follow-up
+
+Catalog: ..\docs\freeze\current\cwb_followup_trials.csv
+Sources: GWOSC GWTC GPS times + cWB-only O3 candidates (arXiv:2410.15191)
+Production path: coherent residual lag-scan (+/-10 ms) + envelope consistency veto (+/-50 ms)
+Checkpoint loaded: True
+Events: 21 listed, 21 with >=1 detector, 21 with H1+L1
+
+[gwtc_cwb] dual-detector events (n=18):
+  Production residual coincidence: 50.0% [29.0%, 71.0%] (9/18)
+  Coherent EP above threshold (gates ignored): 72.2% [49.1%, 87.5%] (13/18)
+  Independent residual coincidence: 0.0% [0.0%, 17.6%] (0/18)
+  Raw excess-power coincidence:     0.0% [0.0%, 17.6%] (0/18)
+
+[cwb_only] dual-detector events (n=3):
+  Production residual coincidence: 0.0% [0.0%, 56.1%] (0/3)
+  Coherent EP above threshold (gates ignored): 33.3% [6.1%, 79.2%] (1/3)
+  Independent residual coincidence: 0.0% [0.0%, 56.1%] (0/3)
+  Raw excess-power coincidence:     0.0% [0.0%, 56.1%] (0/3)
+
+Per-event production residual coincidence:
+  [gwtc_cwb] GW150914: YES — coherent EP 11405.5, lag 8.545 ms, timing True, envelope True
+  [gwtc_cwb] GW151226: no — coherent EP 60.8951, lag 9.277 ms, timing True, envelope False
+  [gwtc_cwb] GW170104: no — coherent EP 350.912, lag 0.732 ms, timing True, envelope False
+  [gwtc_cwb] GW170608: no — coherent EP 1802.81, lag -6.104 ms, timing True, envelope False
+  [gwtc_cwb] GW170729: no — coherent EP 30.0725, lag 7.812 ms, timing True, envelope False
+  [gwtc_cwb] GW170809: no — coherent EP 26.4762, lag -3.662 ms, timing True, envelope False
+  [gwtc_cwb] GW170814: YES — coherent EP 245.257, lag 7.080 ms, timing True, envelope True
+  [gwtc_cwb] GW170817: no — coherent EP 2.96681e+08, lag 1.709 ms, timing True, envelope False
+  [gwtc_cwb] GW170818: YES — coherent EP 214.733, lag -9.277 ms, timing True, envelope True
+  [gwtc_cwb] GW170823: no — coherent EP 36.1614, lag 9.766 ms, timing True, envelope True
+  [gwtc_cwb] GW190412: YES — coherent EP 11405.8, lag -1.221 ms, timing True, envelope True
+  [gwtc_cwb] GW190521: YES — coherent EP 361.858, lag 0.000 ms, timing True, envelope True
+  [gwtc_cwb] GW190521_074359: YES — coherent EP 52642.2, lag -7.812 ms, timing True, envelope True
+  [gwtc_cwb] GW190706_222641: YES — coherent EP 2095.59, lag 0.244 ms, timing True, envelope True
+  [gwtc_cwb] GW190814: no — coherent EP 1368.61, lag 8.545 ms, timing True, envelope False
+  [gwtc_cwb] GW191109_010717: YES — coherent EP 12169.2, lag 2.197 ms, timing True, envelope True
+  [gwtc_cwb] GW200224_222234: YES — coherent EP 3688.15, lag 2.441 ms, timing True, envelope True
+  [gwtc_cwb] GW200225_060421: no — coherent EP 33.608, lag 0.732 ms, timing True, envelope False
+  [cwb_only] cWB_190607: no — coherent EP 117.928, lag -0.732 ms, timing True, envelope False
+  [cwb_only] cWB_190711: no — coherent EP 759.026, lag 10.010 ms, timing False, envelope False
+  [cwb_only] cWB_200318: no — coherent EP 91.453, lag -9.521 ms, timing True, envelope False
+
+Near-miss / veto autopsy:
+  Coherent EP threshold: 173.1
+  Single-IFO residual EP threshold: 4005
+  Envelope gate: ±50 ms
+
+  Production YES: 9/21
+    GW150914: coherent EP 11405.5 (envelope dt -27.588 ms)
+    GW170814: coherent EP 245.257 (envelope dt -14.160 ms)
+    GW170818: coherent EP 214.733 (envelope dt 43.213 ms)
+    GW190412: coherent EP 11405.8 (envelope dt -3.662 ms)
+    GW190521: coherent EP 361.858 (envelope dt 11.475 ms)
+    GW190521_074359: coherent EP 52642.2 (envelope dt -11.963 ms)
+    GW190706_222641: coherent EP 2095.59 (envelope dt 12.939 ms)
+    GW191109_010717: coherent EP 12169.2 (envelope dt 13.184 ms)
+    GW200224_222234: coherent EP 3688.15 (envelope dt 7.324 ms)
+
+  Misses: 12
+  [envelope_veto] n=4
+    GW170104: coherent EP 350.912, 203% of threshold, H1/L1 residual EP 19.2847/682.798, envelope dt -984.375 ms
+    GW170608: coherent EP 1802.81, 1042% of threshold, H1/L1 residual EP 3530.91/30.2114, envelope dt 1839.844 ms
+    GW170817: coherent EP 2.96681e+08, 171400577% of threshold, H1/L1 residual EP 50.72/1.84279e+09, envelope dt -2102.295 ms
+    GW190814: coherent EP 1368.61, 791% of threshold, H1/L1 residual EP 51.8029/2407.07, envelope dt -387.451 ms
+  [timing_fail] n=1
+    cWB_190711: coherent EP 759.026, 439% of threshold, H1/L1 residual EP 24.9623/1510.69, envelope dt -656.738 ms
+  [misaligned_weak] n=6
+    GW151226: coherent EP 60.8951, 35% of threshold, H1/L1 residual EP 25.369/73.7835, envelope dt 1561.523 ms
+    GW170729: coherent EP 30.0725, 17% of threshold, H1/L1 residual EP 24.5024/26.654, envelope dt -2197.266 ms
+    GW170809: coherent EP 26.4762, 15% of threshold, H1/L1 residual EP 24.7099/29.1296, envelope dt 734.375 ms
+    GW200225_060421: coherent EP 33.608, 19% of threshold, H1/L1 residual EP 37.8858/26.7899, envelope dt 1557.129 ms
+    cWB_190607: coherent EP 117.928, 68% of threshold, H1/L1 residual EP 29.5001/193.161, envelope dt 1282.959 ms
+    cWB_200318: coherent EP 91.453, 53% of threshold, H1/L1 residual EP 28.071/133.982, envelope dt 2230.225 ms
+  [weak] n=1
+    GW170823: coherent EP 36.1614, 21% of threshold, H1/L1 residual EP 28.025/43.8466, envelope dt -3.662 ms
+
+  Class meanings:
+    envelope_veto — coherent EP clears threshold but |envelope peak dt| exceeds the glitch-contamination gate
+    threshold_near_miss — coherent EP within 80% of threshold; aligned timing
+    one_sided — one IFO residual clears threshold, the other is weak; coherent combination does not
+    timing_fail — best coherent lag outside ±max-lag-ms
+    misaligned_weak — large envelope mismatch and sub-threshold EP
+    weak — both IFOs and coherent EP well below threshold
+
+How to read:
+- gwtc_cwb: published GWTC events also reported by cWB documentation.
+- cwb_only: O3 candidates reported only by upgraded cWB (arXiv:2410.15191).
+- YES means Keno production coherent residual coincidence triggers
+  (coherent EP above the dual-IFO coherent threshold AND best coherent lag
+  within +/-max-lag-ms AND |envelope peak dt| within +/-max-envelope-dt-ms).
+- Envelope veto rejects single-IFO glitch contamination (e.g. GW170817 L1)
+  that can clear coherent EP with mismatched residual peaks.
+- Coherent EP threshold is calibrated on envelope-gated dual-IFO noise and
+  is separate from the single-detector residual EP threshold.
+- This is a follow-up consistency check, not an independent discovery claim.

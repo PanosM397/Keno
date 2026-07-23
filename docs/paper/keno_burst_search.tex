@@ -29,13 +29,16 @@ The implementation is end to end: PyTorch/FastAPI inference, a Node.js
 orchestration layer with in-memory caching, and an Angular interface for
 synchronized inspection of raw strain, predicted noise, and residuals.
 
-On synthetic bursts injected into real LIGO background, Keno reaches near
-100\% detection efficiency from SNR\,2 to\,12 at 1\% false-alarm rate (FAR).
-Raw excess power on unsubtracted strain, and matched filtering with a
-deliberately mismatched template, achieve lower efficiency on the same
-injections. On 18 published dual-detector catalog times, the coherent residual
-search recovers 9 events; GW170817 is rejected by the envelope veto owing to a
-known Livingston glitch.
+On synthetic bursts injected into real LIGO background at 1\% false-alarm rate
+(FAR), Keno residual excess power reaches near 100\% detection efficiency from
+SNR\,2 to\,12. A deliberately mismatched matched-filter template remains near
+$\sim$20\% efficiency; a BBH-trained ResNet control evaluated off-template
+plateaus below saturation. At this FAR, raw excess power without subtraction
+also saturates, so the injection campaign alone does not separate Keno from
+raw excess power. On published catalog GPS times, the residual path can
+trigger where raw excess power does not (e.g.\ GW150914), and a coherent
+dual-detector residual search recovers 9 of 18 dual-detector events; GW170817
+is rejected by the envelope veto owing to a known Livingston glitch.
 
 Keno is intended to complement morphology-specific binary black hole
 classifiers such as AresGW, not to replace them. The release bundles model,
@@ -89,9 +92,12 @@ for unmodeled bursts.
 
 \paragraph{Scope of claims.}
 In this prototype, generative subtraction followed by residual excess-power
-search improves recovery of unknown-morphology injections at fixed FAR,
-relative to (i)~the same statistic applied to raw strain and (ii)~matched
-filtering with a deliberately mismatched sine-Gaussian template.
+search recovers unknown-morphology injections at controlled FAR, strongly
+outperforming a mismatched matched filter and a BBH-trained ResNet control
+evaluated off-template. Relative to raw excess power, the injection campaign
+at 1\% FAR saturates for both methods; the residual advantage is demonstrated
+on published catalog GPS times (residual-only single-detector triggers and
+production dual-detector coincidence).
 
 \section{Terminology}
 
@@ -283,19 +289,23 @@ check, not a discovery claim.
 \section{Results}
 
 \subsection{Unknown-morphology efficiency}
-Figure~\ref{fig:eff} shows Keno residual EP achieving 100\% efficiency from
-SNR\,2--12 at 1\% FAR. Raw excess power on unsubtracted strain yields lower
-efficiency on the same injections. Mismatched matched filtering remains near
-$\sim$20\% and does not exceed 50\%. The BBH-trained ResNet control, evaluated
-on these non-BBH bursts, plateaus below saturation, as expected for a
-morphology-specific model applied off-template.
+Figure~\ref{fig:eff} shows Keno residual EP near 100\% efficiency from
+SNR\,2--12 at 1\% FAR (freeze campaign; Wilson 95\% intervals). On the same
+synthetic injections, raw excess power without subtraction also saturates at
+this FAR, so the plot does not by itself establish a residual advantage over
+raw excess power. Mismatched matched filtering remains near $\sim$20\% and does
+not exceed 50\%. The BBH-trained ResNet control, evaluated on these non-BBH
+bursts, plateaus below saturation, as expected for a morphology-specific model
+applied off-template. The principal residual-versus-raw contrast appears in the
+catalog follow-up below (e.g.\ GW150914 residual-only trigger).
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/fig2_efficiency.png}
   \caption{Detection efficiency versus injected SNR at 1\% FAR for unknown
-  morphologies. Baselines include raw excess power, mismatched matched
-  filtering, and a BBH-trained ResNet control.}
+  morphologies. Keno residual EP and raw excess power both saturate on these
+  injections; mismatched matched filtering stays low; the BBH-trained ResNet
+  control is evaluated off-template.}
   \label{fig:eff}
 \end{figure}
 
@@ -330,9 +340,16 @@ to remove Gravity Spy morphologies.
 
 \subsection{Catalog GPS follow-up}
 Production coincidence recovers 9 of 18 dual-detector catalog events
-(Figure~\ref{fig:followup}). GW170817 is rejected by the envelope veto despite
-high coherent EP, owing to the Livingston glitch. Contaminated recoveries are
-excluded from the detection count. Three cWB-only candidates remain 0/3.
+(Figure~\ref{fig:followup}). GW150914 is recovered with Independent=no and
+Production=yes: Hanford residual EP clears the single-detector gate while
+Livingston does not, yet the coherent lag scan still passes the dual-detector
+coherent threshold with aligned timing (EP\,$\approx 1.14\times 10^{4}$,
+lag\,$+8.5\,\mathrm{ms}$, envelope peak dt\,$-27.6\,\mathrm{ms}$). That
+asymmetry is expected and illustrates a case where the residual path triggers
+while raw excess power does not. GW170817 is rejected by the envelope veto
+despite high coherent EP, owing to the Livingston glitch. Contaminated
+recoveries are excluded from the detection count. Three cWB-only candidates
+remain 0/3.
 
 \begin{figure}[t]
   \centering
@@ -351,6 +368,9 @@ signal family is known.
 
 Notable limitations of this prototype include:
 \begin{itemize}
+  \item on the freeze injection campaign at 1\% FAR, raw excess power and Keno
+        residual EP both saturate, so synthetic efficiency alone neither proves
+        nor fully characterizes a residual-versus-raw advantage;
   \item limited single-detector glitch rejection, particularly for burst-like
         Gravity Spy classes (Koi Fish, Whistle, Extremely Loud); coincidence
         requirements and the envelope veto provide the primary mitigation;
@@ -388,8 +408,15 @@ visualization---intended for audit and extension alongside existing BBH
 classifiers, rather than as a finished gravitational-wave search pipeline.
 
 \section*{Data availability}
-Code and the freeze bundle accompany this manuscript. Large evaluation CSVs
-are listed with cryptographic hashes in the freeze manifest.
+Code and the freeze bundle are available at
+\url{https://github.com/PanosM397/Keno}
+(label \texttt{2026-07-paper-v1}; checkpoint SHA256 prefix
+\texttt{55ce7637\ldots}).
+A preprint archive of the manuscript, \LaTeX{} source, and freeze metadata is
+deposited on Zenodo:
+\url{https://doi.org/10.5281/zenodo.21433068}.
+Large evaluation CSVs are listed with cryptographic hashes in the freeze
+manifest under \texttt{docs/freeze/current/}.
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
